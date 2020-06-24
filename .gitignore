@@ -1,0 +1,15 @@
+*.xml
+*.dat
+*.plt
+*.vtu
+*.o
+*.pos
+*.fld
+*.lay
+*.geo
+*.mcf
+*msh
+mesh-g
+mesh
+test*
+~*
