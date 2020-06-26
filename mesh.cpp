@@ -3,12 +3,12 @@
 #include"LineEdge.h"
 #include<iostream>
 using namespace std;
-int N1 = 25;
-int N2 = 5;
+int N1 = 22;
+int N2 = 8;
 double p[3][2];
 
-LineEdge line1(p[0], p[1], N1, QUDREFINE1, 0., 0.015);
-LineEdge line2(p[1], p[2], N2, QUDREFINE0, 0.015, 0.);
+LineEdge line1(p[0], p[1], N1, QUDREFINE1, 0., 0.02);
+LineEdge line2(p[1], p[2], N2, EXPREFINE0, 0.02, 0.);
 
 int main() {
     NektarppXml baseMesh("outmesh_", 1E-6);
@@ -17,7 +17,7 @@ int main() {
     vector<double> targz2;
     p[0][0] = 0.; p[0][1] = 0.;
     p[1][0] = 5.; p[1][1] = 0.;
-    p[2][0] = 6.; p[2][1] = 0.;
+    p[2][0] = 7.; p[2][1] = 0.;
     vector<double> p;
     for(int i=0; i<N1; ++i) {
         double s = i*2./N1-1.;
