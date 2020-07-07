@@ -36,6 +36,6 @@ int main() {
     cout << endl;
     baseMesh.LoadXml("3DoutUcomp.xml", N1+N2, targz1);
     innerMesh.LoadXml("3DinUcomp.xml", N2, targz2);
-    baseMesh.AddXml(innerMesh);
+    baseMesh.AddMeshRegion(innerMesh);
     baseMesh.OutXml("test.xml");
 }
