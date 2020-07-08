@@ -36,6 +36,11 @@ int main() {
     cout << endl;
     baseMesh.LoadXml("3DoutUcomp.xml", N1+N2, targz1);
     innerMesh.LoadXml("3DinUcomp.xml", N2, targz2);
+    vector<double> center={0., 0., 0.};
+    vector<vector<double> > centers;
+    centers.push_back(center);
+    vector<double> radius = {100.};
+    innerMesh.outCompAsGeo("test.geo", centers, radius);
     baseMesh.AddMeshRegion(innerMesh);
     baseMesh.OutXml("test.xml");
 }
