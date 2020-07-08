@@ -11,8 +11,8 @@ LineEdge line1(p[0], p[1], N1, QUDREFINE1, 0., 0.02);
 LineEdge line2(p[1], p[2], N2, EXPREFINE0, 0.02, 0.);
 
 int main() {
-    NektarppXml baseMesh("outmesh_", 1E-6);
-    NektarppXml innerMesh("innermesh_", 1E-6);
+    NektarppXml baseMesh("outmesh_", "3DoutUcomp.xml", 1E-6);
+    NektarppXml innerMesh("innermesh_", "3DinUcomp.xml", 1E-6);
     vector<double> targz1;
     vector<double> targz2;
     p[0][0] = 0.; p[0][1] = 0.;
@@ -34,8 +34,8 @@ int main() {
     cout << endl;
     for(int i=0; i<targz2.size(); ++i) cout << targz2[i] << ", ";
     cout << endl;
-    baseMesh.LoadXml("3DoutUcomp.xml", N1+N2, targz1);
-    innerMesh.LoadXml("3DinUcomp.xml", N2, targz2);
+    baseMesh.LoadXml(N1+N2, targz1);
+    innerMesh.LoadXml(N2, targz2);
     vector<double> center={0., 0., 0.};
     vector<vector<double> > centers;
     centers.push_back(center);
