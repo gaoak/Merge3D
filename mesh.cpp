@@ -10,9 +10,13 @@ double p[3][2];
 LineEdge line1(p[0], p[1], N1, QUDREFINE1, 0., 0.02);
 LineEdge line2(p[1], p[2], N2, EXPREFINE0, 0.02, 0.);
 
+double neawallRegion(double x, double y, double z) {
+    return 1. - (x-0.5)*(x-0.5) - y*y;
+}
+
 int main() {
-    NektarppXml baseMesh("outmesh_", "3DoutUcomp.xml", 1E-6);
-    NektarppXml innerMesh("innermesh_", "3DinUcomp.xml", 1E-6);
+    NektarppXml baseMesh("3DoutUcomp.xml", "outmesh_", 1E-6);
+    NektarppXml innerMesh("3DinUcomp.xml", "innermesh_", 1E-6);
     vector<double> targz1;
     vector<double> targz2;
     p[0][0] = 0.; p[0][1] = 0.;
@@ -40,7 +44,14 @@ int main() {
     vector<vector<double> > centers;
     centers.push_back(center);
     vector<double> radius = {100.};
-    innerMesh.outCompAsGeo("test.geo", centers, radius);
-    baseMesh.AddMeshRegion(innerMesh);
+    innerMesh.OutCompAsGeo("test.geo", centers, radius);
+    //baseMesh.AddMeshRegion(innerMesh);
     baseMesh.OutXml("test.xml");
+    
+    vector<void*> condition;
+    condition.push_back((void *)neawallRegion);
+    baseMesh.ReorgDomain(condition);
+    baseMesh.UpdateXmlComposite();
+    baseMesh.UpdateXmlDomainExpansion();
+    baseMesh.OutXml("testc.xml");
 }
