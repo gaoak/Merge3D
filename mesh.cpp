@@ -7,8 +7,8 @@
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
-int N1 = 22;
-int N2 = 8;
+int N1 = 1;
+int N2 = 1;
 double p[3][2];
 
 LineEdge line1(p[0], p[1], N1, QUDREFINE1, 0., 0.02);
@@ -63,11 +63,13 @@ int main() {
     centers.push_back(center);
     vector<double> radius = {100.};
     innerMesh.OutCompAsGeo("test.geo", centers, radius);
-    //baseMesh.AddMeshRegion(innerMesh);
+    baseMesh.AddMeshRegion(innerMesh);
+    baseMesh.UpdateXml();
     baseMesh.OutXml("test.xml");
     
     vector<void*> condition;
     condition.push_back((void *)neawallRegion);
+    condition.push_back((void *)wakeRegion);
     baseMesh.ReorgDomain(condition);
     baseMesh.UpdateXmlComposite();
     baseMesh.UpdateXmlDomainExpansion();
