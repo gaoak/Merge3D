@@ -7,8 +7,8 @@
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
-int N1 = 1;
-int N2 = 1;
+int N1 = 25;
+int N2 = 5;
 static double anckerz[3][2];
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
@@ -30,9 +30,11 @@ static double neawallRegion(double x, double y, double z) {
 }
 
 static double wakeRegion(double x, double y, double z) {
-    double radius = rBoundaryLayer + Thickness*0.5;
     double endz = spanlength + rBoundaryLayer;
-    if(x>=0. && x<=farWakeRight && y>=-radius && y<=radius && z <= endz && z>=-endz) return 1.;
+    double wakexs = chordLen + wakeLen;
+    double ytop = farWakeUp   + (x-wakexs)*tan(wakeDiffuseAngle-farWakeAoA);
+    double ybot = farWakeDown - (x-wakexs)*tan(wakeDiffuseAngle+farWakeAoA);
+    if(x>=0. && x<=farWakeRight && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
     else return -1;
 }
 
