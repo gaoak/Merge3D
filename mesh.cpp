@@ -39,10 +39,20 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2) {
         targz1.push_back(p[0]);
         targz2.push_back(p[0]);
     }
+    if(targz1[N0+N1] - targz1[N0+N1-1]>hFirstLayer) targz1[N0+N1-1] = targz1[N0+N1] - hFirstLayer;
+    if(targz1[N0+N1+1] - targz1[N0+N1]>hFirstLayer) targz1[N0+N1+1] = targz1[N0+N1] + hFirstLayer;
+    if(targz2[1]       -     targz2[0]>hFirstLayer) targz2[1]       = targz2[0]     + hFirstLayer;
     for(int i=0; i<targz1.size(); ++i) cout << targz1[i] << ", ";
     cout << endl;
     for(int i=0; i<targz2.size(); ++i) cout << targz2[i] << ", ";
     cout << endl;
+    cout << "input c for continue " << endl;
+    char c = 0;
+    cin >> c;
+    if(c!='c') {
+        cout << "end generating." << endl;
+        exit(-1);
+    }
 }
 
 static double neawallRegion(double x, double y, double z) {
