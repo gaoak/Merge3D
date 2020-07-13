@@ -18,7 +18,7 @@ static void init() {
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
     int N0 = 10;
     int N1 = 15;
-    int N2 = 5;
+    int N2 = 7;
     LineEdge line0(anckerz[0], anckerz[1], N0, UNIFORM,    0., 0.);
     LineEdge line1(anckerz[1], anckerz[2], N1, QUDREFINE1, 0., hFirstLayer);
     LineEdge line2(anckerz[2], anckerz[3], N2, EXPREFINE0, hFirstLayer, 0.);
@@ -39,7 +39,7 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2) {
         targz1.push_back(p[0]);
         targz2.push_back(p[0]);
     }
-    if(targz1[N0+N1] - targz1[N0+N1-1]>hFirstLayer) targz1[N0+N1-1] = targz1[N0+N1] - hFirstLayer;
+    //if(targz1[N0+N1] - targz1[N0+N1-1]>hFirstLayer) targz1[N0+N1-1] = targz1[N0+N1] - hFirstLayer;
     if(targz1[N0+N1+1] - targz1[N0+N1]>hFirstLayer) targz1[N0+N1+1] = targz1[N0+N1] + hFirstLayer;
     if(targz2[1]       -     targz2[0]>hFirstLayer) targz2[1]       = targz2[0]     + hFirstLayer;
     for(int i=0; i<targz1.size(); ++i) cout << targz1[i] << ", ";
