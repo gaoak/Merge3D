@@ -10,7 +10,7 @@ double domainz = 7.;
 static double anckerz[4][2];
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
-    anckerz[1][0] = spanlength - 2.*chordLen; anckerz[1][1] = 0.;
+    anckerz[1][0] = spanlength - chordLen; anckerz[1][1] = 0.;
     anckerz[2][0] = spanlength; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 }
