@@ -10,16 +10,16 @@ double domainz = 7.;
 static double anckerz[4][2];
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
-    anckerz[1][0] = spanlength - chordLen; anckerz[1][1] = 0.;
+    anckerz[1][0] = spanlength - 2.*chordLen; anckerz[1][1] = 0.;
     anckerz[2][0] = spanlength; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
-    int N0 = 10;
-    int N1 = 15;
+    int N0 = 5;
+    int N1 = 20;
     int N2 = 7;
-    LineEdge line0(anckerz[0], anckerz[1], N0, UNIFORM,    0., 0.);
+    LineEdge line0(anckerz[0], anckerz[1], N0, QUDREFINE1,    0., 0.1);
     LineEdge line1(anckerz[1], anckerz[2], N1, QUDREFINE1, 0., hFirstLayer);
     LineEdge line2(anckerz[2], anckerz[3], N2, EXPREFINE0, hFirstLayer, 0.);
     vector<double> p;
@@ -60,11 +60,12 @@ static double neawallRegion(double x, double y, double z) {
     p[0] = x; p[1] = y; p[2] = z;
     transform(p, -AoA);
     double radius = rBoundaryLayer + Thickness*0.5;
-    double endz = spanlength + rBoundaryLayer;
-    double res = radius*radius - (x*x + y*y);
-    if(res>=0 && z <= endz && z>=-endz) return 1.;
-    double xend = chordLen + wakeLen;
-    if(p[0]>=0. && p[0]<=xend && p[1]>=-radius && p[1]<=radius && z <= endz && z>=-endz) return 1.;
+    double radiuslow = 0.5*rBoundaryLayer + Thickness*0.5;
+    double endz = spanlength + rBoundaryLayer*0.5;
+    double res = radiuslow*radiuslow - (x*x + y*y);
+    if(res>=0 && z <= endz && z>=anckerz[1]) return 1.;
+    double xend = chordLen + wakeLen*0.5;
+    if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=anckerz[1]) return 1.;
     else return -1;
 }
 
@@ -79,26 +80,31 @@ static double wakeRegion(double x, double y, double z) {
     transform(pl, farWakeAoA);
     double ytop = pu[1] + (x-pu[0])*tan(wakeDiffuseAngle-farWakeAoA);
     double ybot = pl[1] - (x-pl[0])*tan(wakeDiffuseAngle+farWakeAoA);
-    if(x>=0. && x<=farWakeRight && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
+    if(x>=-rBoundaryLayer && x<=farWakeRight*0.6 && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
     else return -1;
 }
 
 int main() {
     init();
-    NektarppXml baseMesh("../Mesh2D/3DoutUcomp.xml", "outmesh_", 1E-6);
-    NektarppXml innerMesh("../Mesh2D/3DinUcomp.xml", "innermesh_", 1E-6);
     vector<double> targz1;
     vector<double> targz2;
     setzscale(targz1, targz2);
-    baseMesh.LoadXml(targz1.size()-1, targz1);
-    innerMesh.LoadXml(targz2.size()-1, targz2);
-    
-    baseMesh.AddMeshRegion(innerMesh);
     vector<void*> condition;
     condition.push_back((void *)neawallRegion);
     condition.push_back((void *)wakeRegion);
-    baseMesh.ReorgDomain(condition);
 
+    NektarppXml mesh2D("../Mesh2D/outerRegion.xml", "2Doutmesh_", 1E-6);
+    mesh2D.LoadXml(targz1.size()-1, targz1);
+    mesh2D.ReorgDomain(condition);
+    mesh2D.UpdateXml();
+    mesh2D.OutXml("test2D.xml");
+
+    NektarppXml baseMesh("../Mesh2D/3DoutUcomp.xml", "outmesh_", 1E-6);
+    NektarppXml innerMesh("../Mesh2D/3DinUcomp.xml", "innermesh_", 1E-6);
+    baseMesh.LoadXml(targz1.size()-1, targz1);
+    innerMesh.LoadXml(targz2.size()-1, targz2);
+    baseMesh.AddMeshRegion(innerMesh);
+    baseMesh.ReorgDomain(condition);
     baseMesh.UpdateXml();
     baseMesh.OutXml("test.xml");
 
