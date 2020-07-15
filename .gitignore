@@ -1,6 +1,7 @@
 *.xml
 *.dat
 *.plt
+*.su2
 *.vtu
 *.o
 *.pos
