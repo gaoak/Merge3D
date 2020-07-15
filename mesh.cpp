@@ -63,9 +63,9 @@ static double neawallRegion(double x, double y, double z) {
     double radiuslow = 0.5*rBoundaryLayer + Thickness*0.5;
     double endz = spanlength + rBoundaryLayer*0.5;
     double res = radiuslow*radiuslow - (x*x + y*y);
-    if(res>=0 && z <= endz && z>=anckerz[1]) return 1.;
+    if(res>=0 && z <= endz && z>=anckerz[1][0]) return 1.;
     double xend = chordLen + wakeLen*0.5;
-    if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=anckerz[1]) return 1.;
+    if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=anckerz[1][0]) return 1.;
     else return -1;
 }
 
