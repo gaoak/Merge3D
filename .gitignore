@@ -18,3 +18,4 @@ test*
 *bmp
 *jpg
 *.swp
+.vscode
