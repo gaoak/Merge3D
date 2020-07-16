@@ -20,7 +20,7 @@ static void init() {
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
     int N0 = 1;
-    int N1 = 2;
+    int N1 = 1;
     int N2 = 2;
     LineEdge line0(anckerz[0], anckerz[1], N0, QUDREFINE1,    0., 0.1);
     LineEdge line1(anckerz[1], anckerz[2], N1, QUDREFINE1, 0., hFirstLayer);

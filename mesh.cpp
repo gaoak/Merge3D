@@ -19,9 +19,9 @@ static void init() {
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
-    int N0 = 1;
-    int N1 = 2;
-    int N2 = 2;
+    int N0 = 5;
+    int N1 = 15;
+    int N2 = 5;
     LineEdge line0(anckerz[0], anckerz[1], N0, QUDREFINE1,    0., 0.1);
     LineEdge line1(anckerz[1], anckerz[2], N1, QUDREFINE1, 0., hFirstLayer);
     LineEdge line2(anckerz[2], anckerz[3], N2, EXPREFINE0, hFirstLayer, 0.);
@@ -63,11 +63,11 @@ static double neawallRegion(double x, double y, double z) {
     p[0] = x; p[1] = y; p[2] = z;
     transform(p, -AoA);
     double radius = rBoundaryLayer + Thickness*0.5;
-    double radiuslow = 0.5*rBoundaryLayer + Thickness*0.5;
+    double radiuslow = 0.6*rBoundaryLayer + Thickness*0.5;
     double endz = spanlength + rBoundaryLayer*0.5;
     double res = radiuslow*radiuslow - (x*x + y*y);
     if(res>=0 && z <= endz && z>=anckerz[1][0]) return 1.;
-    double xend = chordLen + wakeLen*0.5;
+    double xend = chordLen + wakeLen;
     if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=anckerz[1][0]) return 1.;
     else return -1;
 }
@@ -83,7 +83,7 @@ static double wakeRegion(double x, double y, double z) {
     transform(pl, farWakeAoA);
     double ytop = pu[1] + (x-pu[0])*tan(wakeDiffuseAngle-farWakeAoA);
     double ybot = pl[1] - (x-pl[0])*tan(wakeDiffuseAngle+farWakeAoA);
-    if(x>=-rBoundaryLayer && x<=farWakeRight*0.6 && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
+    if(x>=-rBoundaryLayer && x<=chordLen + wakeLen*2 && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
     else return -1;
 }
 
@@ -97,7 +97,7 @@ int main() {
     condition.push_back((void *)wakeRegion);
 
     NektarppXml mesh2D("../Mesh2D/outerRegion.xml", "2Doutmesh_", 1E-6);
-    mesh2D.LoadXml(targz1.size()-1, targz1);
+    mesh2D.LoadXml(targz2.size()-1, targz2);
     mesh2D.ReorgDomain(condition);
     mesh2D.UpdateXml();
     mesh2D.OutXml("test2D.xml");
