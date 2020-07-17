@@ -7,23 +7,24 @@ merge 3D nektar mesh at Re 400
 #include"params.h"
 #include"Util.h"
 #include<iostream>
+#include<algorithm>
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
 static double anckerz[4][2];
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
-    anckerz[1][0] = spanlength - 2.*chordLen; anckerz[1][1] = 0.;
+    anckerz[1][0] = spanlength - 2.5*chordLen; anckerz[1][1] = 0.;
     anckerz[2][0] = spanlength; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
     int N0 = 5;
-    int N1 = 15;
-    int N2 = 5;
-    LineEdge line0(anckerz[0], anckerz[1], N0, QUDREFINE1,    0., 0.1);
-    LineEdge line1(anckerz[1], anckerz[2], N1, QUDREFINE1, 0., hFirstLayer);
+    int N1 = 19;
+    int N2 = 6;
+    LineEdge line0(anckerz[0], anckerz[1], N0-1, EXPREFINE1,    0., 0.1);
+    LineEdge line1(anckerz[1], anckerz[2], N1, UNIFORM, 0., hFirstLayer);
     LineEdge line2(anckerz[2], anckerz[3], N2, EXPREFINE0, hFirstLayer, 0.);
     vector<double> p;
     for(int i=0; i<line0.m_N; ++i) {
@@ -36,6 +37,7 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2) {
         p = line1.Evaluate(s);
         targz1.push_back(p[0]);
     }
+    targz1.push_back(anckerz[2][0]-3.*hFirstLayer);
     for(int i=0; i<=line2.m_N; ++i) {
         double s = i*2./line2.m_N-1.;
         p = line2.Evaluate(s);
@@ -63,17 +65,21 @@ static double neawallRegion(double x, double y, double z) {
     p[0] = x; p[1] = y; p[2] = z;
     transform(p, -AoA);
     double radius = rBoundaryLayer + Thickness*0.5;
-    double radiuslow = 0.6*rBoundaryLayer + Thickness*0.5;
+    double radiuslow = 0.7*rBoundaryLayer + Thickness*0.5;
     double endz = spanlength + rBoundaryLayer*0.5;
     double res = radiuslow*radiuslow - (x*x + y*y);
     if(res>=0 && z <= endz && z>=anckerz[1][0]) return 1.;
     double xend = chordLen + wakeLen;
     if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=anckerz[1][0]) return 1.;
-    else return -1;
+    if(p[0]>=chordLen && p[0]<=xend && p[1]>=-radius && p[1]<=radius && z <= endz && z>=anckerz[1][0]) return 1.;
+    return -1;
 }
 
 static double wakeRegion(double x, double y, double z) {
+    double radiuslow = 0.7*rBoundaryLayer + Thickness*0.5;
+    double res = radiuslow*radiuslow - (x*x + y*y);
     double endz = spanlength + rBoundaryLayer;
+    if(res>=0 && z <= endz) return 1.;
     double wakexs = chordLen + wakeLen;
     vector<double> pu(2);
     vector<double> pl(2);
@@ -83,7 +89,7 @@ static double wakeRegion(double x, double y, double z) {
     transform(pl, farWakeAoA);
     double ytop = pu[1] + (x-pu[0])*tan(wakeDiffuseAngle-farWakeAoA);
     double ybot = pl[1] - (x-pl[0])*tan(wakeDiffuseAngle+farWakeAoA);
-    if(x>=-rBoundaryLayer && x<=chordLen + wakeLen*2 && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
+    if(x>=-rBoundaryLayer && x<=farWakeRight && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
     else return -1;
 }
 
