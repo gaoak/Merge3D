@@ -10,17 +10,17 @@ double domainz = 7.;
 static double anckerz[4][2];
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
-    anckerz[1][0] = spanlength - 2.*chordLen; anckerz[1][1] = 0.;
+    anckerz[1][0] = spanlength - 2.5*chordLen; anckerz[1][1] = 0.;
     anckerz[2][0] = spanlength; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
-    int N0 = 5;
-    int N1 = 20;
-    int N2 = 7;
-    LineEdge line0(anckerz[0], anckerz[1], N0, QUDREFINE1,    0., 0.1);
-    LineEdge line1(anckerz[1], anckerz[2], N1, QUDREFINE1, 0., hFirstLayer);
+    int N0 = 20;
+    int N1 = 50;
+    int N2 = 20;
+    LineEdge line0(anckerz[0], anckerz[1], N0-1, QUDREFINE1,    0., 0.05);
+    LineEdge line1(anckerz[1], anckerz[2], N1, UNIFORM, 0., hFirstLayer);
     LineEdge line2(anckerz[2], anckerz[3], N2, EXPREFINE0, hFirstLayer, 0.);
     vector<double> p;
     for(int i=0; i<line0.m_N; ++i) {
@@ -33,6 +33,7 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2) {
         p = line1.Evaluate(s);
         targz1.push_back(p[0]);
     }
+    targz1.push_back(anckerz[2][0]-3.*hFirstLayer);
     for(int i=0; i<=line2.m_N; ++i) {
         double s = i*2./line2.m_N-1.;
         p = line2.Evaluate(s);
@@ -100,6 +101,8 @@ int main() {
     baseMesh.AddMeshRegion(innerMesh);
     baseMesh.OutPutSU2("test.su2");
 
+    baseMesh.UpdateXml();
+    baseMesh.OutXml("test.xml");
     //vector<double> center={0., 0., 0.};
     //vector<vector<double> > centers;
     //centers.push_back(center);

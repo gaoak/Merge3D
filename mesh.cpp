@@ -1,13 +1,9 @@
-/*
-merge 3D nektar mesh at Re 400
-*/
 #include"MeshRegion.h"
 #include"Nektarpp.h"
 #include"LineEdge.h"
 #include"params.h"
 #include"Util.h"
 #include<iostream>
-#include<algorithm>
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
@@ -20,10 +16,10 @@ static void init() {
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
-    int N0 = 8;
-    int N1 = 19;
-    int N2 = 6;
-    LineEdge line0(anckerz[0], anckerz[1], N0-1, QUDREFINE1,  0., 0.15);
+    int N0 = 20;
+    int N1 = 50;
+    int N2 = 20;
+    LineEdge line0(anckerz[0], anckerz[1], N0-1, QUDREFINE1,    0., 0.05);
     LineEdge line1(anckerz[1], anckerz[2], N1, UNIFORM, 0., hFirstLayer);
     LineEdge line2(anckerz[2], anckerz[3], N2, EXPREFINE0, hFirstLayer, 0.);
     vector<double> p;
@@ -68,21 +64,14 @@ static double neawallRegion(double x, double y, double z) {
     double radiuslow = 0.5*rBoundaryLayer + Thickness*0.5;
     double endz = spanlength + rBoundaryLayer*0.5;
     double res = radiuslow*radiuslow - (x*x + y*y);
-    if(res>=0 && z <= endz && z>= -endz) return 1.;
-    double res2 = 0.4*0.4 - (x-1.5)*(x-1.5) - (y-0.7)*(y-0.7);
-    if(res2>=0 && z <= 0.1+spanlength && z>= -endz) return 1.;
-    double xend = farWakeRight*0.9;
-    if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=-endz) return 1.;
-    if(p[0]>=chordLen && p[0]<=xend && p[1]>=-radius*1.2 && p[1]<=radius && z <= endz && z>=-endz) return 1.;
-    return -1;
+    if(res>=0 && z <= endz && z>=anckerz[1][0]) return 1.;
+    double xend = chordLen + wakeLen*0.5;
+    if(p[0]>=0. && p[0]<=xend && p[1]>=-radiuslow && p[1]<=radius && z <= endz && z>=anckerz[1][0]) return 1.;
+    else return -1;
 }
 
 static double wakeRegion(double x, double y, double z) {
-    double radius = rBoundaryLayer*0.5 + chordLen;
-    double res = radius*radius - (x-chordLen)*(x-chordLen) - y*y;
-    double res1 = 0.64*rBoundaryLayer*rBoundaryLayer - x*x - y*y;
-    double endz = spanlength + rBoundaryLayer*0.5;
-    if((res>=0 || res1>=0) && z <= endz) return 1.;
+    double endz = spanlength + rBoundaryLayer;
     double wakexs = chordLen + wakeLen;
     vector<double> pu(2);
     vector<double> pl(2);
@@ -92,7 +81,7 @@ static double wakeRegion(double x, double y, double z) {
     transform(pl, farWakeAoA);
     double ytop = pu[1] + (x-pu[0])*tan(wakeDiffuseAngle-farWakeAoA);
     double ybot = pl[1] - (x-pl[0])*tan(wakeDiffuseAngle+farWakeAoA);
-    if(x>=-rBoundaryLayer*0.8 && x<=farWakeRight && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
+    if(x>=-rBoundaryLayer && x<=farWakeRight*0.6 && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
     else return -1;
 }
 
@@ -105,21 +94,15 @@ int main() {
     condition.push_back((void *)neawallRegion);
     condition.push_back((void *)wakeRegion);
 
-    NektarppXml mesh2D("../Mesh2D/outerRegion.xml", "2Doutmesh_", 1E-6);
-    mesh2D.LoadXml(targz2.size()-1, targz2);
-    mesh2D.ReorgDomain(condition);
-    mesh2D.UpdateXml();
-    mesh2D.OutXml("test2D.xml");
-
     NektarppXml baseMesh("../Mesh2D/3DoutUcomp.xml", "outmesh_", 1E-6);
     NektarppXml innerMesh("../Mesh2D/3DinUcomp.xml", "innermesh_", 1E-6);
     baseMesh.LoadXml(targz1.size()-1, targz1);
     innerMesh.LoadXml(targz2.size()-1, targz2);
     baseMesh.AddMeshRegion(innerMesh);
-    baseMesh.ReorgDomain(condition);
+    baseMesh.OutPutSU2("test.su2");
+
     baseMesh.UpdateXml();
     baseMesh.OutXml("test.xml");
-
     //vector<double> center={0., 0., 0.};
     //vector<vector<double> > centers;
     //centers.push_back(center);
