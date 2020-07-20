@@ -74,16 +74,8 @@ static double neawallRegion(double x, double y, double z) {
 
 static double wakeRegion(double x, double y, double z) {
     double endz = spanlength + rBoundaryLayer;
-    double wakexs = chordLen + wakeLen;
-    vector<double> pu(2);
-    vector<double> pl(2);
-    pu[0] = wakexs; pu[1] = farWakeUp;
-    pl[0] = wakexs; pl[1] = farWakeDown;
-    transform(pu, farWakeAoA);
-    transform(pl, farWakeAoA);
-    double ytop = pu[1] + (x-pu[0])*tan(wakeDiffuseAngle-farWakeAoA);
-    double ybot = pl[1] - (x-pl[0])*tan(wakeDiffuseAngle+farWakeAoA);
-    if(x>=-rBoundaryLayer && x<=farWakeRight*0.6 && y>=ybot && y<=ytop && z <= endz && z>=-endz) return 1.;
+    double res = 1.2*1.2*chordLen*chordLen - (x-chordLen)*(x-chordLen) -y*y;
+    if(res>0. && z <= endz && z>=-endz) return 1.;
     else return -1;
 }
 
