@@ -61,10 +61,7 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2) {
 }
 
 static double neawallRegion(double x, double y, double z) {
-    double eps = 0.5;
-    if(x<xBoxLeft+eps || x>xBoxRight-eps || y<yBoxDown+eps || y>yBoxUp-eps) 
-              return 1.;
-    else      return -1;
+    return 1.;
 }
 
 int main() {
