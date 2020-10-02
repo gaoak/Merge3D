@@ -65,17 +65,22 @@ static double neawallRegion(double x, double y, double z) {
     return 1;
 }
 
+static double detectSingular(double x, double y, double z) {
+    return 10 - x*x - y*y;
+}
+
 int main() {
     init();
     vector<double> targz1;
     vector<double> targz2;
     setzscale(targz1, targz2);
     vector<void*> condition;
+    condition.push_back((void *)detectSingular);
     condition.push_back((void *)neawallRegion);
 
     NektarppXml mesh2D("../Mesh2D/outerRegion.xml", "2Doutmesh_", 1E-6);
     mesh2D.LoadXml(targz2.size()-1, targz2);
-    mesh2D.ReorgDomain(condition);
+    mesh2D.ReorgDomain(condition, false);
     mesh2D.UpdateXml();
     mesh2D.OutXml("test2D.xml");
 
@@ -84,7 +89,7 @@ int main() {
     baseMesh.LoadXml(targz1.size()-1, targz1);
     innerMesh.LoadXml(targz2.size()-1, targz2);
     baseMesh.AddMeshRegion(innerMesh);
-    baseMesh.ReorgDomain(condition);
+    baseMesh.ReorgDomain(condition, true);
     baseMesh.UpdateXml();
     baseMesh.OutXml("test.xml");
 
