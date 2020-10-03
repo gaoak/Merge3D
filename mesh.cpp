@@ -14,18 +14,18 @@ double domainz = 7.;
 static double anckerz[4][2];
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
-    anckerz[1][0] = spanlength - 1.*hFirstLayer; anckerz[1][1] = 0.;
+    anckerz[1][0] = spanlength - 0.2; anckerz[1][1] = 0.;
     anckerz[2][0] = spanlength; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz - 1.2*chordLen;    anckerz[3][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2) {
-    int N0 = 37;
-    int N1 = 1;
-    int N2 = 8;
-    LineEdge line0(anckerz[0], anckerz[1], N0, QUDREFINE1,  0., 1.5*hFirstLayer);
-    LineEdge line1(anckerz[1], anckerz[2], N1, UNIFORM, 0., hFirstLayer);
-    LineEdge line2(anckerz[2], anckerz[3], N2-1, EXPREFINE0, hFirstLayer, 0.);
+    int N0 = 35;
+    int N1 = 5;
+    int N2 = 10;
+    LineEdge line0(anckerz[0], anckerz[1], N0, UNIFORM,  0., 10.*hFirstLayer);
+    LineEdge line1(anckerz[1], anckerz[2], N1, EXPREFINE1, 0., hFirstLayer);
+    LineEdge line2(anckerz[2], anckerz[3], N2-1, EXPREFINE0, progress*hFirstLayer, 0.);
     vector<double> p;
     for(int i=0; i<line0.m_N; ++i) {
         double s = i*2./line0.m_N-1.;
@@ -37,6 +37,7 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2) {
         p = line1.Evaluate(s);
         targz1.push_back(p[0]);
     }
+    targz1[targz1.size()-1] = spanlength - hFirstLayer;
     for(int i=0; i<=line2.m_N; ++i) {
         double s = i*2./line2.m_N-1.;
         p = line2.Evaluate(s);
