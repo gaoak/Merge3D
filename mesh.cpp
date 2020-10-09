@@ -26,7 +26,7 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2, vector<dou
     targz1.clear();
     targz2.clear();
     targz3.clear();
-    LineEdge line0(anckerz[0], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, 0.5*offset, 3., 5);
+    LineEdge line0(anckerz[0], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, offset, 2., 5);
     LineEdge line1(anckerz[2], anckerz[3], N1, BOUNDARYLAYER0, 1.5*offset, 2., 5, 0, 0, 0);
     vector<double> p;
     for(int i=0; i<=line0.m_N; ++i) {
