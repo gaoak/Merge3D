@@ -61,6 +61,7 @@ static double neawallRegion(double x, double y, double z) {
 }
 
 static double detectSingular(double x, double y, double z) {
+    if(z>spanlength+0.1 || z<spanlength-0.1) return -1.;
     return 10 - x*x - y*y;
 }
 
