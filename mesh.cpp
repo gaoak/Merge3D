@@ -120,10 +120,10 @@ int main() {
     //innerMesh.OutXml("testinner.xml");
 
     baseMesh.AddMeshRegion(baseMesh_negative);
-    baseMesh.AddMeshRegion(baseMesh2);
     baseMesh.AddMeshRegion(baseMesh2_negative);
-    baseMesh.AddMeshRegion(innerMesh_negative);
+    baseMesh.AddMeshRegion(baseMesh2);
     baseMesh.AddMeshRegion(innerMesh);
+    baseMesh.AddMeshRegion(innerMesh_negative);
     baseMesh.ReorgBoundary();
     baseMesh.ReorgDomain(condition, true);
     baseMesh.UpdateXml();
