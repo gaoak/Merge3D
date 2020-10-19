@@ -122,8 +122,8 @@ int main() {
     baseMesh.AddMeshRegion(baseMesh_negative);
     baseMesh.AddMeshRegion(baseMesh2);
     baseMesh.AddMeshRegion(baseMesh2_negative);
-    baseMesh.AddMeshRegion(innerMesh);
     baseMesh.AddMeshRegion(innerMesh_negative);
+    baseMesh.AddMeshRegion(innerMesh);
     baseMesh.ReorgBoundary();
     baseMesh.ReorgDomain(condition, true);
     baseMesh.UpdateXml();
