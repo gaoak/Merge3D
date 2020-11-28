@@ -24,8 +24,8 @@ static void init() {
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2, vector<double> &targz3) {
     int Nm1 = 17;
-    int N0 = 43;
-    int N1 = 9;
+    int N0 = wingn - Nm1;
+    int N1 = tipn;
     targz1.clear();
     targz2.clear();
     targz3.clear();
