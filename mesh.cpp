@@ -19,12 +19,12 @@ static void init() {
     anckerz[2][0] = spanlength + offset; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 
-    anckerz[4][0] = 2.45;    anckerz[3][1] = 0.;
+    anckerz[4][0] = 2.5;    anckerz[3][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2, vector<double> &targz3) {
-    int Nm1 = 20;
-    int N0 = 40;
+    int Nm1 = 7;
+    int N0 = 53;
     int N1 = 9;
     targz1.clear();
     targz2.clear();
