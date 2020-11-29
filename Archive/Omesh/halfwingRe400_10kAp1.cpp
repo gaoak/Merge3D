@@ -19,7 +19,7 @@ static void init() {
     anckerz[2][0] = spanlength + offset; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 
-    anckerz[4][0] = 3.;    anckerz[3][1] = 0.;
+    anckerz[4][0] = spanlength - tiprefinelength;    anckerz[3][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2, vector<double> &targz3) {
