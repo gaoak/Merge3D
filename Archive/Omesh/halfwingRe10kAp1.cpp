@@ -11,7 +11,7 @@ merge 3D nektar mesh at Re 400
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
-static double anckerz[5][2];
+static double anckerz[6][2];
 double offset = hFirstLayer;
 static void init() {
     anckerz[0][0] = 0.;         anckerz[0][1] = 0.;
@@ -19,23 +19,31 @@ static void init() {
     anckerz[2][0] = spanlength + offset; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 
-    anckerz[4][0] = spanlength - tiprefinelength;    anckerz[4][1] = 0.;
+    anckerz[4][0] = spanlength - tiprefinelength1;    anckerz[4][1] = 0.;
+    anckerz[5][0] = spanlength - tiprefinelength2;    anckerz[5][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2, vector<double> &targz3) {
-    int Nm1 = 19;
-    int N0 = wingn - Nm1;
+    int Nm1 = 10;
+    int Nm2 = 20;
+    int N0 = wingn - Nm1 - Nm2;
     int N1 = tipn;
     targz1.clear();
     targz2.clear();
     targz3.clear();
-    LineEdge linem1(anckerz[0], anckerz[4], Nm1, BOUNDARYLAYER1, 0, 0, 0, 0.08, 2., 5);
+    LineEdge linem1(anckerz[0], anckerz[5], Nm1, UNIFORM, 0., 0.);
+    LineEdge linem2(anckerz[5], anckerz[4], Nm2, BOUNDARYLAYER1, 0, 0, 0, maxLayerh*1.5, 1.5, 5);
     LineEdge line0(anckerz[4], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, offset, 2., 5);
     LineEdge line1(anckerz[2], anckerz[3], N1, BOUNDARYLAYER0, 2.*offset, 1.6, 7, 0, 0, 0);
     vector<double> p;
     for(int i=0; i<linem1.m_N; ++i) {
         double s = i*2./linem1.m_N-1.;
         p = linem1.Evaluate(s);
+        targz1.push_back(p[0]);
+    }
+    for(int i=0; i<linem2.m_N; ++i) {
+        double s = i*2./linem2.m_N-1.;
+        p = linem2.Evaluate(s);
         targz1.push_back(p[0]);
     }
     for(int i=0; i<=line0.m_N; ++i) {
