@@ -8,6 +8,9 @@ merge 3D nektar mesh at Re 400
 #include"Util.h"
 #include<iostream>
 #include<algorithm>
+#ifndef SWEPTANGLE
+    #define  SWEPTANGLE 0
+#endif
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
@@ -74,6 +77,21 @@ static double detectSingular(double x, double y, double z) {
     return 10 - x*x - y*y;
 }
 
+void swept(double * p) {
+    static double theta = sin(SWEPTANGLE*M_PI/180.);
+    if (fabs(p[0] - xBoxLeft )<hFirstLayer ||
+        fabs(p[0] - xBoxRight)<hFirstLayer ||
+        fabs(p[1] - yBoxUp   )<hFirstLayer ||
+        fabs(p[1] - yBoxDown )<hFirstLayer) {
+        return;
+    }
+    if (p[2]>spanlength) {
+        p[0] = spanlength*theta + p[0];
+    } else {
+        p[0] = p[2]*theta + p[0];
+    }
+}
+
 int main() {
     init();
     vector<double> targz1, targz2, targz3;
@@ -107,6 +125,7 @@ int main() {
     baseMesh.AddMeshRegion(innerMesh);
     baseMesh.ReorgBoundary();
     baseMesh.ReorgDomain(condition, true);
+    baseMesh.DeformPts((void*)swept);
     baseMesh.UpdateXml();
     baseMesh.CheckMesh();
     baseMesh.OutXml("test.xml");

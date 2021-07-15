@@ -8,6 +8,9 @@ merge 3D nektar mesh at Re 400
 #include"Util.h"
 #include<iostream>
 #include<algorithm>
+#ifndef SWEPTANGLE
+    #define  SWEPTANGLE 0
+#endif
 using namespace std;
 double spanlength = 5.;
 double domainz = 7.;
@@ -19,17 +22,17 @@ static void init() {
     anckerz[2][0] = spanlength + offset; anckerz[2][1] = 0.;
     anckerz[3][0] = domainz;    anckerz[3][1] = 0.;
 
-    anckerz[4][0] = 2.5;    anckerz[3][1] = 0.;
+    anckerz[4][0] = spanlength - tiprefinelength;    anckerz[4][1] = 0.;
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2, vector<double> &targz3) {
-    int Nm1 = 19;
+    int Nm1 = 17;
     int N0 = wingn - Nm1;
     int N1 = tipn;
     targz1.clear();
     targz2.clear();
     targz3.clear();
-    LineEdge linem1(anckerz[0], anckerz[4], Nm1, BOUNDARYLAYER1, 0, 0, 0, 0.08, 2., 5);
+    LineEdge linem1(anckerz[0], anckerz[4], Nm1, BOUNDARYLAYER1, 0, 0, 0, 0.05, 2., 5);
     LineEdge line0(anckerz[4], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, offset, 2., 5);
     LineEdge line1(anckerz[2], anckerz[3], N1, BOUNDARYLAYER0, 2.*offset, 1.6, 7, 0, 0, 0);
     vector<double> p;
@@ -74,6 +77,21 @@ static double detectSingular(double x, double y, double z) {
     return 10 - x*x - y*y;
 }
 
+void swept(double * p) {
+    static double theta = sin(SWEPTANGLE*M_PI/180.);
+    if (fabs(p[0] - xBoxLeft )<hFirstLayer ||
+        fabs(p[0] - xBoxRight)<hFirstLayer ||
+        fabs(p[1] - yBoxUp   )<hFirstLayer ||
+        fabs(p[1] - yBoxDown )<hFirstLayer) {
+        return;
+    }
+    if (p[2]>spanlength) {
+        p[0] = spanlength*theta + p[0];
+    } else {
+        p[0] = p[2]*theta + p[0];
+    }
+}
+
 int main() {
     init();
     vector<double> targz1, targz2, targz3;
@@ -107,6 +125,7 @@ int main() {
     baseMesh.AddMeshRegion(innerMesh);
     baseMesh.ReorgBoundary();
     baseMesh.ReorgDomain(condition, true);
+    baseMesh.DeformPts((void*)swept);
     baseMesh.UpdateXml();
     baseMesh.CheckMesh();
     baseMesh.OutXml("test.xml");
