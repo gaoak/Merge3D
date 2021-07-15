@@ -78,7 +78,7 @@ static double detectSingular(double x, double y, double z) {
 }
 
 void swept(double * p) {
-    static double theta = sin(SWEPTANGLE*M_PI/180.);
+    static double theta = tan(SWEPTANGLE*M_PI/180.);
     if (fabs(p[0] - xBoxLeft )<hFirstLayer ||
         fabs(p[0] - xBoxRight)<hFirstLayer ||
         fabs(p[1] - yBoxUp   )<hFirstLayer ||
