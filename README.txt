@@ -6,6 +6,8 @@ git submodule update
 To generate 3D mesh, second
 bash make.sh
 
+To check the mesh, run
+bash extractSurf.sh
 
 
 
