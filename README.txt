@@ -1,3 +1,16 @@
+git clone https://github.com/gaoak/Merge3D.git
+cd Merge3D
+git submodule init
+git submodule update
+
+To generate 3D mesh, second
+bash make.sh
+
+
+
+
+
+
 full wing:
 C0, wing wall
 C7, z=5 wing tip
