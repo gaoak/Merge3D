@@ -16,7 +16,7 @@ static double anckerz[6][2];
 double offset = hFirstLayer;
 static void init() {
     anckerz[0][0] = 0.;
-    anckerz[1][0] = spanlength - tiprefinelength;
+    anckerz[1][0] = spanlength - wingrefinelength;
     anckerz[2][0] = spanlength;
     anckerz[3][0] = spanlength + offset;
     anckerz[4][0] = spanlength + tiprefinelength;
