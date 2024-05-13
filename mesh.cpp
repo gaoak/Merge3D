@@ -9,8 +9,6 @@ merge 3D nektar mesh at Re 400
 #include <algorithm>
 #include <iostream>
 using namespace std;
-double spanlength = 5.;
-double domainz = 7.;
 static double anckerz[4][2];
 double offset = hFirstLayer;
 static void init() {
@@ -82,18 +80,18 @@ int main() {
   condition.push_back((void *)detectSingular);
   condition.push_back((void *)neawallRegion);
 
-  NektarppXml baseMesh("3DoutUcomp.xml", "outmesh_", 1E-6);
-  baseMesh.LoadWallmapping("wallmapping.dat");
+  NektarppXml baseMesh("InputMesh/3DoutUcomp.xml", "outmesh_", 1E-6);
+  baseMesh.LoadWallmapping("InputMesh/wallmapping.dat");
   baseMesh.LoadXml(targz1.size() - 1, targz1, 0., offset);
   // baseMesh.OutXml("testouter1.xml");
 
-  NektarppXml baseMesh2("3DoutUcomp2.xml", "outmesh_", 1E-6);
-  baseMesh2.LoadWallmapping("wallmapping.dat");
+  NektarppXml baseMesh2("InputMesh/3DoutUcomp2.xml", "outmesh_", 1E-6);
+  baseMesh2.LoadWallmapping("InputMesh/wallmapping.dat");
   baseMesh2.LoadXml(targz2.size() - 1, targz2, 0., 0.);
   baseMesh2.OutXml("testouter2.xml");
 
-  NektarppXml innerMesh("3DinUcomp.xml", "outmesh_", 1E-6);
-  innerMesh.LoadWallmapping("wallmapping.dat");
+  NektarppXml innerMesh("InputMesh/3DinUcomp.xml", "outmesh_", 1E-6);
+  innerMesh.LoadWallmapping("InputMesh/wallmapping.dat");
   innerMesh.LoadXml(targz3.size() - 1, targz3, 0., 0., true, 0);
   // innerMesh.OutXml("testinner.xml");
 
