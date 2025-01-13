@@ -31,5 +31,5 @@ add_executable(mesh mesh.cpp)
 target_link_libraries(mesh LIBPROCESSING)
 
 # process executable
-add_executable(Fix3DMesh mesh.cpp)
+add_executable(Fix3DMesh Fix3DMesh.cpp)
 target_link_libraries(Fix3DMesh LIBPROCESSING)
