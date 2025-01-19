@@ -43,12 +43,6 @@ static void setzscale(vector<double> &targz1) {
 
 static double neawallRegion(double x, double y, double z) { return 1; }
 
-static double detectSingular(double x, double y, double z) {
-  if (z > spanlength + 0.1 || z < spanlength - 0.1)
-    return -1.;
-  return 10 - x * x - y * y;
-}
-
 void movetip(double *p) { p[2] += spanlength; }
 
 int main() {
@@ -69,8 +63,7 @@ int main() {
   while (tipMesh.ReorgBoundary(M_PI * 0.499))
     ;
   vector<void *> condition;
-  condition.push_back((void *)neawallRegion);
-  tipMesh.ReorgDomain(condition, true);
+  tipMesh.ReorgDomain(condition, false);
   tipMesh.UpdateXml();
   tipMesh.CheckMesh();
   tipMesh.OutXml("test.xml");
