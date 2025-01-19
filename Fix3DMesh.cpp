@@ -59,13 +59,14 @@ int main() {
   NektarppXml rootMesh("root3D.xml", "Root", 1E-6);
   rootMesh.LoadXml(targz1.size() - 1, targz1);
 
-  tipMesh.AddMeshRegion(rootMesh);
-  while (tipMesh.ReorgBoundary(M_PI * 0.499))
+  rootMesh.AddMeshRegion(tipMesh);
+  while (rootMesh.ReorgBoundary(M_PI * 0.499))
     ;
   vector<void *> condition;
-  tipMesh.ReorgDomain(condition, false);
-  tipMesh.UpdateXml();
-  tipMesh.CheckMesh();
-  tipMesh.OutXml("test.xml");
+  condition.push_back((void *)neawallRegion);
+  rootMesh.ReorgDomain(condition, true);
+  rootMesh.UpdateXml();
+  rootMesh.CheckMesh();
+  rootMesh.OutXml("test.xml");
   return 0;
 }
