@@ -45,28 +45,43 @@ static double neawallRegion(double x, double y, double z) { return 1; }
 
 void movetip(double *p) { p[2] += spanlength; }
 
-int main() {
+int main(int argc, char *argv[]) {
+  bool gmshmap = false;
+  std::string sortedfile;
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "gmsh") == 0) {
+      gmshmap = true;
+      sortedfile = argv[i + 1];
+    }
+  }
   init();
   vector<double> targz1;
   setzscale(targz1);
 
   vector<double> targz0;
-  NektarppXml tipMesh("tip.xml", "Tip:", 1E-6);
+  NektarppXml tipMesh("tip.xml", "Tip:", 1E-5);
   tipMesh.LoadWallmapping("wallmapping.dat");
   tipMesh.LoadXml(1, targz0, 0., 0., true, -1);
   tipMesh.DeformPts((void *)movetip);
+  tipMesh.UpdateXml();
 
-  NektarppXml rootMesh("root3D.xml", "Root", 1E-6);
+  NektarppXml rootMesh("root3D.xml", "Root", 1E-5);
   rootMesh.LoadXml(targz1.size() - 1, targz1);
 
   rootMesh.AddMeshRegion(tipMesh);
-  while (rootMesh.ReorgBoundary(M_PI * 0.499))
-    ;
-  vector<void *> condition;
-  condition.push_back((void *)neawallRegion);
-  rootMesh.ReorgDomain(condition, true);
-  rootMesh.UpdateXml();
-  rootMesh.CheckMesh();
-  rootMesh.OutXml("test.xml");
+
+  if (!gmshmap) {
+    rootMesh.OutGmsh("test.msh");
+  } else {
+    rootMesh.RemapMesh(sortedfile);
+    while (rootMesh.ReorgBoundary(M_PI * 0.499))
+      ;
+    vector<void *> condition;
+    condition.push_back((void *)neawallRegion);
+    rootMesh.ReorgDomain(condition, true);
+    rootMesh.UpdateXml();
+    rootMesh.CheckMesh();
+    rootMesh.OutXml("fixed.xml");
+  }
   return 0;
 }
