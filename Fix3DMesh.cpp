@@ -45,6 +45,17 @@ static double neawallRegion(double x, double y, double z) { return 1; }
 
 void movetip(double *p) { p[2] += spanlength; }
 
+/* usage
+1, Extract root surface, root.xml:xml:uncompress
+2, Fix root surface, ConvertXml root.xml root.xml
+3, Extrude root surface following params3D.h -> wingn, as root3D.xml:xml:uncompress
+4, Save wing tip mesh as tip.xml:xml:uncompress
+5, Concatenate tip.xml and root3D.xml to gmsh, test.msh
+6, Convert gmsh file to Nektar xml, NekMesh test.msh test2.xml
+7, Fix concatenated mesh, Fix3DMesh gmsh test2.xml
+8, The final mesh fixed.xml is correct
+*/
+
 int main(int argc, char *argv[]) {
   bool gmshmap = false;
   std::string sortedfile;
