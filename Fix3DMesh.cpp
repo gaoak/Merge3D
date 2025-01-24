@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
   tipMesh.DeformPts((void *)movetip);
   tipMesh.UpdateXml();
 
-  NektarppXml rootMesh("root3D.xml", "Root", 1E-5);
+  NektarppXml rootMesh("root3D.xml", "Root", 1E-4);
   rootMesh.LoadXml(targz1.size() - 1, targz1);
 
   rootMesh.AddMeshRegion(tipMesh);
