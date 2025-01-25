@@ -1,0 +1,33 @@
+1, generate a mesh for the tip region in starccm+.
+the leading edge is (0,0)
+
+2, Convert ccm mesh to Nektar++ xml using NekMesh, split
+3, Find root plane, extract root plane using NekMesh, in uncompressed form
+NekMesh -m extract:surf=4 wing.xml root.xml:xml:uncompress
+modify spacedim to 2
+4, Fix 2D mesh using Mesh2D/build/ConvertXml
+points number for curved edges, AoA 15 and NACA 0012 are hard coded in file ConvertXml.cpp, can be changed
+(a, fix node order; b, replace straight edge to curved using 4 points)
+./ConvertXml root.xml fixroot.xml
+two files are generated, fixroot.xml
+wallmapping.dat [old points -> modifed points, will be used in step 6, for tip mesh's root plane]
+
+5, Extrude root plane to 3D xml mesh
+NekMesh -m extrude:layers=4 fixroot.xml root3D.xml:xml:uncompress
+
+=========
+Merge extruded wing root and wing tip mesh using Merge3D/build/Fix3DMesh
+[params to be modified] param3D.h -> wingn is the number of layers for the wing root
+[params to be modified] spanlength is the lenght of root region
+[params to be modified] tipoffset is the spanwise mesh size for the root interface, for others grows at x2 until to uniform
+required files
+tip.xml in uncompress format
+root3D.xml in uncompress format
+=========
+6, run ./Fix3DMesh to generate a gmsh mesh
+get test.msh file
+7, Convert test.msh to xml format
+NekMesh test.msh test2.xml:xml:uncompress
+8, Fix element nodes order using test2.xml
+./Fix3DMesh gmsh test2.xml
+The final file fixed.xml is correct.

@@ -9,8 +9,8 @@ merge 3D nektar mesh at Re 400
 #include <algorithm>
 #include <iostream>
 using namespace std;
+bool silent = false;
 static double anckerz[4][2];
-double offset = 0.1;
 static void init() {
   anckerz[0][0] = 0.;
   anckerz[0][1] = 0.;
@@ -21,7 +21,7 @@ static void init() {
 static void setzscale(vector<double> &targz1) {
   int N0 = wingn;
   targz1.clear();
-  LineEdge line0(anckerz[0], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, offset,
+  LineEdge line0(anckerz[0], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, tipoffset,
                  2., 5);
   vector<double> p;
   for (int i = 0; i <= line0.m_N; ++i) {
@@ -32,12 +32,14 @@ static void setzscale(vector<double> &targz1) {
   for (int i = 0; i < targz1.size(); ++i)
     cout << targz1[i] << ", ";
   cout << endl;
-  cout << "input c for continue " << endl;
-  char c = 0;
-  cin >> c;
-  if (c != 'c') {
-    cout << "end generating." << endl;
-    exit(-1);
+  if (!silent) {
+    cout << "input c for continue " << endl;
+    char c = 0;
+    cin >> c;
+    if (c != 'c') {
+      cout << "end generating." << endl;
+      exit(-1);
+    }
   }
 }
 
@@ -48,12 +50,11 @@ void movetip(double *p) { p[2] += spanlength; }
 /* usage
 1, Extract root surface, root.xml:xml:uncompress
 2, Fix root surface, ConvertXml root.xml root.xml
-3, Extrude root surface following params3D.h -> wingn, as root3D.xml:xml:uncompress
-4, Save wing tip mesh as tip.xml:xml:uncompress
-5, Concatenate tip.xml and root3D.xml to gmsh, test.msh
-6, Convert gmsh file to Nektar xml, NekMesh test.msh test2.xml
-7, Fix concatenated mesh, Fix3DMesh gmsh test2.xml
-8, The final mesh fixed.xml is correct
+3, Extrude root surface following params3D.h -> wingn, as
+root3D.xml:xml:uncompress 4, Save wing tip mesh as tip.xml:xml:uncompress 5,
+Concatenate tip.xml and root3D.xml to gmsh, test.msh 6, Convert gmsh file to
+Nektar xml, NekMesh test.msh test2.xml 7, Fix concatenated mesh, Fix3DMesh gmsh
+test2.xml 8, The final mesh fixed.xml is correct
 */
 
 int main(int argc, char *argv[]) {
@@ -63,6 +64,9 @@ int main(int argc, char *argv[]) {
     if (strcmp(argv[i], "gmsh") == 0) {
       gmshmap = true;
       sortedfile = argv[i + 1];
+    }
+    if (strcmp(argv[i], "silent") == 0) {
+      silent = true;
     }
   }
   init();
