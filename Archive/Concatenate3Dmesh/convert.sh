@@ -1,10 +1,10 @@
 infile="wing.xml"
 nrootcomp=4
-
+codedir="/home/agao/testcode"
 echo "need to recompile Mesh2D and Merge3D codes before runing"
-ln -s /home/agao/testcode/Mesh2D/build/ConvertXml .
-ln -s /home/agao/testcode/Merge3D/build/Fix3DMesh .
-ln -s /home/agao/testcode/Merge3D/params3D.h . # to use wingn
+ln -s ${codedir}/Mesh2D/build/ConvertXml .
+ln -s ${codedir}/Merge3D/build/Fix3DMesh .
+ln -s ${codedir}/Merge3D/params3D.h . # to use wingn
 
 # uncompressed tip mesh
 NekMesh ${infile} tip.xml:xml:uncompress -f 
