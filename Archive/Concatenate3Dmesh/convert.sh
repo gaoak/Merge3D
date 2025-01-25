@@ -1,6 +1,7 @@
 infile="wing.xml"
 nrootcomp=4
 
+echo "need to recompile Mesh2D and Merge3D codes before runing"
 ln -s /home/agao/testcode/Mesh2D/build/ConvertXml .
 ln -s /home/agao/testcode/Merge3D/build/Fix3DMesh .
 ln -s /home/agao/testcode/Merge3D/params3D.h . # to use wingn
