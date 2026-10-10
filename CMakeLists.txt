@@ -33,3 +33,10 @@ target_link_libraries(mesh LIBPROCESSING)
 # process executable
 add_executable(Fix3DMesh Fix3DMesh.cpp)
 target_link_libraries(Fix3DMesh LIBPROCESSING)
+
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(check_trapezoid_mapping checks/trapezoid_mapping.cpp)
+  target_include_directories(check_trapezoid_mapping PRIVATE ${CMAKE_SOURCE_DIR})
+  add_test(NAME trapezoid_mapping COMMAND check_trapezoid_mapping)
+endif()

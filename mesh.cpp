@@ -5,9 +5,12 @@ merge 3D nektar mesh at Re 400
 #include "CAD3D/MeshRegion.h"
 #include "CAD3D/Nektarpp.h"
 #include "CAD3D/Util.h"
+#include "TrapezoidWing.h"
 #include "params3D.h"
 #include <algorithm>
 #include <iostream>
+#include <stdexcept>
+#include <string>
 using namespace std;
 static double anckerz[4][2];
 double offset = hFirstLayer;
@@ -23,7 +26,7 @@ static void init() {
 }
 
 static void setzscale(vector<double> &targz1, vector<double> &targz2,
-                      vector<double> &targz3) {
+                      vector<double> &targz3, bool confirm) {
   int N0 = wingn;
   int N1 = tipn;
   targz1.clear();
@@ -55,6 +58,8 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2,
   for (int i = 0; i < targz3.size(); ++i)
     cout << targz3[i] << ", ";
   cout << endl;
+  if (!confirm)
+    return;
   cout << "input c for continue " << endl;
   char c = 0;
   cin >> c;
@@ -72,10 +77,40 @@ static double detectSingular(double x, double y, double z) {
   return 10 - x * x - y * y;
 }
 
-int main() {
+static const TrapezoidWing &wingTransform() {
+  static const TrapezoidWing mapping(
+      sourceChord, rootChord, tipChord, spanlength, foilAngleDegrees,
+      leadingEdgeRadius, trailingEdgeRadius, taperNearNormal, taperFarNormal,
+      taperNearUpstream, taperFarUpstream);
+  return mapping;
+}
+
+static void taperWing(double *p) { wingTransform().Apply(p); }
+
+static int generateMesh(int argc, char *argv[]) {
+  bool confirm = true, rectangular = false;
+  string output = "test.xml";
+  for (int i = 1; i < argc; ++i) {
+    const string arg = argv[i];
+    if (arg == "--yes")
+      confirm = false;
+    else if (arg == "--rectangular")
+      rectangular = true;
+    else if (arg == "--output" && i + 1 < argc)
+      output = argv[++i];
+    else if (arg == "--help") {
+      cout << "Usage: mesh [--yes] [--rectangular] [--output mesh.xml]\n";
+      return 0;
+    } else
+      throw invalid_argument("Unknown or incomplete option: " + arg);
+  }
+  if (!rectangular)
+    cout << "Trapezoid chord: root=" << rootChord << ", tip=" << tipChord
+         << ", continuous mapping Jacobian >= "
+         << wingTransform().JacobianLowerBound() << endl;
   init();
   vector<double> targz1, targz2, targz3;
-  setzscale(targz1, targz2, targz3);
+  setzscale(targz1, targz2, targz3, confirm);
   vector<void *> condition;
   condition.push_back((void *)detectSingular);
   condition.push_back((void *)neawallRegion);
@@ -100,9 +135,22 @@ int main() {
   while (baseMesh.ReorgBoundary(M_PI * 0.499))
     ;
   baseMesh.ReorgDomain(condition, true);
+  // Deform the assembled mesh once, including all CURVED interpolation points.
+  // Organize boundaries beforehand to retain the existing boundary IDs.
+  if (!rectangular)
+    baseMesh.DeformPts((void *)taperWing);
   baseMesh.UpdateXml();
   baseMesh.CheckMesh();
-  baseMesh.OutXml("test.xml");
+  baseMesh.OutXml(output);
 
   return 0;
+}
+
+int main(int argc, char *argv[]) {
+  try {
+    return generateMesh(argc, argv);
+  } catch (const exception &error) {
+    cerr << "Mesh generation failed: " << error.what() << endl;
+    return 1;
+  }
 }

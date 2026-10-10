@@ -20,3 +20,4 @@ test*
 *.swp
 .vscode
 build*
+/verification/
