@@ -12,8 +12,8 @@ double leadingEdgeRadius = 0.025;
 double trailingEdgeRadius = 0.025;
 
 // Keep the source trailing edge fixed; linearly taper the chord along z.
-double rootChord = 1.3;
-double tipChord = 0.7;
+double rootChord = 1.5;
+double tipChord = 0.5;
 
 // Blend the fluid mesh to the unchanged far field in the source (u,v) frame.
 double taperNearNormal = 0.1;
