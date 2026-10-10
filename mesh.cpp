@@ -7,6 +7,7 @@ merge 3D nektar mesh at Re 400
 #include "CAD3D/Util.h"
 #include "TrapezoidWing.h"
 #include "params3D.h"
+#include "paramsDeformed.h"
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
@@ -88,23 +89,30 @@ static const TrapezoidWing &wingTransform() {
 static void taperWing(double *p) { wingTransform().Apply(p); }
 
 static int generateMesh(int argc, char *argv[]) {
-  bool confirm = true, rectangular = false;
-  string output = "test.xml";
+  bool confirm = true, deformed = false;
+  string output;
   for (int i = 1; i < argc; ++i) {
     const string arg = argv[i];
     if (arg == "--yes")
       confirm = false;
+    else if (arg == "--deformed")
+      deformed = true;
     else if (arg == "--rectangular")
-      rectangular = true;
+      deformed = false;
     else if (arg == "--output" && i + 1 < argc)
       output = argv[++i];
     else if (arg == "--help") {
-      cout << "Usage: mesh [--yes] [--rectangular] [--output mesh.xml]\n";
+      cout << "Usage: mesh [--yes] [--deformed | --rectangular] "
+              "[--output mesh.xml]\n"
+              "Default: rectangular mesh (test.xml). "
+              "--deformed: trapezoid mesh (deformed.xml).\n";
       return 0;
     } else
       throw invalid_argument("Unknown or incomplete option: " + arg);
   }
-  if (!rectangular)
+  if (output.empty())
+    output = deformed ? "deformed.xml" : "test.xml";
+  if (deformed)
     cout << "Trapezoid chord: root=" << rootChord << ", tip=" << tipChord
          << ", continuous mapping Jacobian >= "
          << wingTransform().JacobianLowerBound() << endl;
@@ -123,7 +131,7 @@ static int generateMesh(int argc, char *argv[]) {
   NektarppXml baseMesh2("InputMesh/3DoutUcomp2.xml", "outmesh_", 1E-6);
   baseMesh2.LoadWallmapping("InputMesh/wallmapping.dat");
   baseMesh2.LoadXml(targz2.size() - 1, targz2, 0., 0.);
-  baseMesh2.OutXml("testouter2.xml");
+  baseMesh2.OutXml(deformed ? "deformedouter2.xml" : "testouter2.xml");
 
   NektarppXml innerMesh("InputMesh/3DinUcomp.xml", "outmesh_", 1E-6);
   innerMesh.LoadWallmapping("InputMesh/wallmapping.dat");
@@ -137,7 +145,7 @@ static int generateMesh(int argc, char *argv[]) {
   baseMesh.ReorgDomain(condition, true);
   // Deform the assembled mesh once, including all CURVED interpolation points.
   // Organize boundaries beforehand to retain the existing boundary IDs.
-  if (!rectangular)
+  if (deformed)
     baseMesh.DeformPts((void *)taperWing);
   baseMesh.UpdateXml();
   baseMesh.CheckMesh();
