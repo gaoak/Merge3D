@@ -53,7 +53,7 @@ def main():
     parser.add_argument("--source-chord", type=float, default=1.)
     parser.add_argument("--span", type=float, default=5.)
     parser.add_argument("--angle", type=float, default=15.)
-    parser.add_argument("--radius", type=float, default=.025)
+    parser.add_argument("--radius", type=float, default=1./60.)
     parser.add_argument("--report")
     parser.add_argument("--preview")
     args = parser.parse_args()
@@ -151,6 +151,7 @@ def main():
             "Boundary/internal face mismatch")
     require(all(n == 1 for n in boundaries.values()), "Repeated boundary face")
     report = dict(vertices=len(points), elements=len(topology["ELEMENT"]),
+                  expected_thickness=2. * args.radius, expected_cap_radius=args.radius,
                   element_types=dict(Counter(tag for tag, _ in topology["ELEMENT"].values())),
                   topology_unchanged=True, boundary_faces=len(boundaries),
                   curved_edges=len(curved), max_normal_change=max_normal_change,
@@ -186,7 +187,7 @@ def main():
 <polygon points="{polygon(root, 420., 270., 485.)}" fill="#d6eaf8" stroke="#2874a6" stroke-width="1.5"/>
 <polygon points="{polygon(tip, 420., 270., 525.)}" fill="#d5f5e3" stroke="#239b56" stroke-width="1.5"/>
 <text x="715" y="490" font-size="15">Root</text><text x="715" y="530" font-size="15">Tip</text>
-<text x="40" y="565" font-size="15">Thickness = 0.05; both cap radii = 0.025; section contours use mesh vertices.</text>
+<text x="40" y="565" font-size="15">Thickness = {2.*args.radius:.8g}; both cap radii = {args.radius:.8g}; contours use mesh vertices.</text>
 </g></svg>'''
         Path(args.preview).write_text(svg)
 

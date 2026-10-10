@@ -25,6 +25,13 @@ translated, and thickness and both circular caps retain their dimensions.
 For z beyond the wing tip, the tip transformation is used. Fluid deformation
 smoothly vanishes outside the blend extents specified in paramsDeformed.h.
 
+Required geometry for the trapezoid repair: thickness = 1/30, and the
+leading/trailing edges are semicircles with radius = 1/60 at every spanwise
+section. These target dimensions are recorded in paramsDeformed.h and are
+distinct from the current rectangular InputMesh (thickness 0.05, radii
+0.025). The current mapping still preserves those source dimensions; the
+target thickness/radii have not yet been applied to the mapping or outputs.
+
 To generate without the interactive prompt:
 ./build/mesh --yes
 To choose the output or explicitly select a mesh type:
