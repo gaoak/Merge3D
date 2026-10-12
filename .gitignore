@@ -1,4 +1,5 @@
 *.xml
+!InputMesh/inFoil.xml
 *.dat
 *.plt
 *.su2
@@ -21,3 +22,5 @@ test*
 .vscode
 build*
 /verification/
+/axis.csv
+/pipe_summary.json

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(Mesh2D)
+project(BentPipeMesh)
 
 # c++ standard
 set(CMAKE_CXX_STANDARD 11)
@@ -27,16 +27,17 @@ ADD_CUSTOM_TARGET(release
 add_library(LIBPROCESSING SHARED ${CADSOURCE})
 
 # process executable
-add_executable(mesh mesh.cpp)
+add_executable(mesh mesh.cpp PipeMesh.cpp)
 target_link_libraries(mesh LIBPROCESSING)
-
-# process executable
-add_executable(Fix3DMesh Fix3DMesh.cpp)
-target_link_libraries(Fix3DMesh LIBPROCESSING)
 
 include(CTest)
 if(BUILD_TESTING)
-  add_executable(check_trapezoid_mapping checks/trapezoid_mapping.cpp)
-  target_include_directories(check_trapezoid_mapping PRIVATE ${CMAKE_SOURCE_DIR})
-  add_test(NAME trapezoid_mapping COMMAND check_trapezoid_mapping)
+  add_executable(check_bent_pipe checks/bent_pipe.cpp)
+  target_include_directories(check_bent_pipe PRIVATE ${CMAKE_SOURCE_DIR})
+  add_test(NAME bent_pipe COMMAND check_bent_pipe)
+  add_executable(check_cad3d_compatibility checks/cad3d_compatibility.cpp)
+  target_include_directories(check_cad3d_compatibility PRIVATE ${CMAKE_SOURCE_DIR})
+  target_link_libraries(check_cad3d_compatibility LIBPROCESSING)
+  add_test(NAME cad3d_compatibility COMMAND check_cad3d_compatibility
+    ${CMAKE_SOURCE_DIR}/InputMesh/inFoil.xml ${CMAKE_BINARY_DIR}/cad3d_roundtrip.xml)
 endif()

@@ -1,173 +1,173 @@
-Merge3D：矩形与梯形机翼网格生成及验证经验
-========================================
+弯曲圆管内部网格（channel 分支）
+================================
 
-1. 当前几何约定
+本分支只生成正圆截面的管内网格。旧机翼程序和说明保存在 Archive/Wing，
+不参与当前编译。主程序 mesh.cpp 只负责读取参数并调用弯管生成流程。
+
+1. 输入与运行
+-------------
+使用用户放入 InputMesh/inFoil.xml 的最新二维圆内网格，不自动从
+../Mesh2D 复制文件，也不使用旧 wallmapping.dat。
+当前输入为半径 0.5 的正圆：720 个顶点，600 个四边形、166 个三角形，
+周向有 72 条圆弧边。
+
+执行：
+  bash make.sh
+
+脚本依次：
+  1) CMake 编译；
+  2) NekMesh extrude 拉伸最新的二维输入，始终重新生成
+     InputMesh/pipeStraight.xml；
+  3) 沿弯管中轴线重映射顶点、高阶边和侧面；
+  4) NekMesh 检查实际高阶网格的负 Jacobian；
+  5) 核对圆截面、曲面/边一致性和拓扑，成功后发布 pipecomp.xml。
+
+输出：
+  pipe.xml：未压缩的弯管网格。
+  pipecomp.xml：通过检查的压缩网格。
+  axis.csv：各截面的中轴线弧长、间距、中心、切向与法向。
+  pipe_summary.json：参数、实际截面数和管径。
+  verification/pipe_jacobian.log：NekMesh 检查日志。
+  verification/pipe_geometry.json：实际几何和拓扑验证结果。
+
+单独重新拉伸：
+  bash InputMesh/extrude.sh
+  bash InputMesh/extrude.sh 128
+直接处理已有直管输入：
+  ./build/mesh
+程序从实际输入的平面数推算总层数，不假设三维输入一定为 128 层。
+新旧三维输入不要混用；正常运行 make.sh 会重新拉伸。
+
+2. 参数文件
+-----------
+几何和中轴线网格参数集中在 params3D.h：
+
+  extrudeLayers = 128          NekMesh 拉伸层数，共产生 129 个平面。
+  bendAngleDegrees = 90       两端切向的总转角，当前支持 0..180 度。
+  bendRadius = 2              中轴线曲率半径。
+  inletExtension = 2          圆弧前的直段长度。
+  outletExtension = 2         圆弧后的直段长度。
+  centerSpacing = 0.02        圆弧中点向两侧的第一个单元弧长。
+  growthRate = 1.08           从中点向外的指数增长率。
+  inletLayers = 64            中点到入口的层数。
+  geometryPoints = 6          高阶边每边点数、曲面每方向点数的下限。
+
+出口侧层数 = 实际输入平面数 - 1 - inletLayers。
+两侧长度 = 半圆弧长度 + 各自直段长度，直段长度可以分别指定。
+文件名与脚本配套：二维输入 inFoil.xml，直管输入 pipeStraight.xml，
+最终输出 pipe.xml。改变路径时需同步脚本和检查器。
+
+管内半径由输入圆截面读取，并检查所有侧壁顶点位于同一正圆上，
+所有拉伸平面包含相同的二维截面。不会另外缩放输入管径。
+
+3. 轴向加密规则
 ---------------
-矩形源机翼：弦长 1、半展长 5、攻角 15 度。
-矩形和梯形机翼厚度均为 1/30，前后缘均为半圆，半径均为 1/60。
-梯形机翼：翼根弦长 1.5、翼尖弦长 0.5，后缘固定，弦长沿展向线性变化。
-z=0 是翼根，z=5 是翼尖；当前计算域另一侧位于 z=9。
+以圆弧中点为 s=0，从中心到入口为负弧长，到出口为正弧长。
+这不是曲率圆心；曲率圆心在管道之外。
 
-物理厚度来自 ../Mesh2D/params.h 的 Thickness；BLFlatPlate 使用
-Thickness/2 作为前后缘半圆半径。二维参数中的
-LEradius = Thickness/2 + upperBL0 等变量包含边界层厚度，不能当作
-实体圆角半径。
+两侧分别从 centerSpacing 起按 growthRate 增长，当下一步增长会超过
+剩余长度与剩余层数允许的平均间距时，转为等距尾段，准确到达端点。
+最小间距保持指定值，不通过整体缩放来改变它。
+对相同的直段长度与层数，分布关于 s=0 对称；两侧参数不同时分别拟合。
+中心截面和两端截面都有明确的网格平面。
 
-厚度 0.05、半径 0.025 属于旧输入几何，不是当前验证基准。
-verification/rectangular/ 和 rectangular_reference_20261010_222139 中的
-旧备份属于这一版本。后续比较应使用已验证的厚度 1/30 的新矩形备份。
+长度、中心间距、增长率和层数不能任意同时指定。程序会拒绝：
+  centerSpacing * 某侧层数 > 该侧长度；
+  即使该侧全部按指定增长率增长，累积长度仍不足以到达端点；
+  inletLayers >= 实际总层数。
+遇到不匹配时，调整中心间距、增长率、层数或直段长度，程序不静默改变
+指定的中心间距和增长率。
 
-2. 文件职责与运行入口
----------------------
-make.sh：矩形入口，输出 test.xml、testcomp.xml。
-makeDeformed.sh：梯形入口，输出 deformed.xml、deformedcomp.xml。
-mesh.cpp：共用的重映射、拼接、输出主程序；默认矩形，--deformed
-启用梯形，--rectangular 显式选择矩形。
-params3D.h：共享的展长、层数、翼尖间距和计算域。
-paramsDeformed.h：源截面尺寸、攻角、梯形弦长和流体过渡范围。
-TrapezoidWing.h：保持厚度、圆角及后缘的逐截面变换。
-CAD3D/Nektarpp.cpp：XML 读取、展向重映射、顶点和曲边变形。
-CAD3D/MeshRegion.cpp：点/边/面拼接、边界与体区域整理、拓扑检查。
-CAD3D/LineEdge.cpp、Util.cpp：展向非均匀分布和辅助函数。
-
-获取与运行：
-  git clone https://github.com/gaoak/Merge3D.git
-  cd Merge3D
-  git submodule init
-  git submodule update
-  bash make.sh --yes
-  bash makeDeformed.sh --yes
-省略 --yes 时，打印展向坐标后等待输入 c。
-直接运行：
-  ./build/mesh --yes
-  ./build/mesh --yes --deformed
-  ./build/mesh --yes --rectangular --output rectangular.xml
-
-3. 二维输入、拉伸与三块拼接
--------------------------
-二维源文件来自 ../Mesh2D/build：
-outerRegion.xml：翼身外围网格。
-outerRegion_Otip.xml：翼尖之后的外围网格。
-inFoil.xml：填充翼尖之后截面内部区域的网格。
-wallmapping.dat：壁面轮廓到外扩一层轮廓的对应关系。
-
-InputMesh/extrude.sh 复制二维源文件，用 NekMesh 拉伸得到：
-3DoutUcomp.xml：wingn 层。
-3DoutUcomp2.xml：tipn 层。
-3DinUcomp.xml：tipn+1 层。
-
-mesh.cpp 将归一化展向坐标映射到非均匀 z 分布。
-翼身壁面末层位于 spanlength，其余末层点延伸到
-spanlength+hFirstLayer。第二块从外扩平面延伸到 domainz；第三块从
-翼尖延伸到 domainz，底层保持实体轮廓，其余层边界通过 wallmapping
-外扩。这样形成翼尖过渡层和可匹配的三块接口。
-
-拼接按点、边、面、单元的顺序进行。重复接口面从边界集合中删除，
-随后整理边界 composite 和体区域。先完成拼接，再统一变形，使共享
-接口顶点只变换一次。
-
-4. 梯形映射与圆角保护
----------------------
-不能整体缩放弦向坐标，否则半圆会变成椭圆。
-变换在机翼局部弦向 u、法向 v 中进行，保留原攻角。
-Mesh2D 的坐标约定：
-  x = u*cos(AoA) + v*sin(AoA)
-  y = -u*sin(AoA) + v*cos(AoA)
-逆变换：
-  u = x*cos(AoA) - y*sin(AoA)
-  v = x*sin(AoA) + y*cos(AoA)
-
-源前缘 u=0，源后缘 u=sourceChord。变换只改变 u，保持 v、z。
-在翼身范围：
-  c(z) = rootChord + (tipChord-rootChord)*z/spanlength
-  D(z) = sourceChord-c(z)
-  u_new = u + D(z)*w(u)*g(v)
-超过翼尖时沿用翼尖弦长和变换，不再增加前缘位移。
-
-近翼区域 g(v)=1。前缘半圆采用 w=1，整体平移；后缘半圆采用 w=0，
-保持原位。中间平板段改变长度，法向坐标保持不变，因此厚度不变。
-新前缘 u=sourceChord-c(z)，后缘始终为 sourceChord。
-当前翼根前缘为 -0.5，翼尖前缘为 0.5。
-
-完整圆角保护区由实际源半径确定：
-  u<=leadingEdgeRadius：完整平移前缘半圆。
-  u>=sourceChord-trailingEdgeRadius：固定后缘半圆。
-  两者之间以 1-S(t) 连接，S(t)=3*t*t-2*t*t*t。
-上游位移在 taperFarUpstream 到 taperNearUpstream 之间平滑增加到完整
-位移；法向因子在 taperNearNormal 到 taperFarNormal 之间平滑衰减到零。
-固定远场与内部网格需要平滑过渡，避免旧 swept() 仅冻结边界点、整体
-移动其余点造成的突然位移变化。
-
-DeformPts 同时修改顶点和 CURVED 中全部曲边插值点。只修改 VERTEX
-会导致圆弧与端点不一致。当前追加的两块输入没有曲边；以后若追加
-带曲边的块，需要核对合并后的曲边记录和编号，AddMeshRegion 主要
-处理拓扑结构。
-
-5. 等弦长恢复矩形的条件
+4. 中轴线与正圆截面映射
 -----------------------
-rootChord=tipChord 时，得到等弦长矩形机翼。
-只有 rootChord=tipChord=sourceChord 时，D(z)=0，变换完全为恒等映射。
-同一批输入、相同层数和公共参数下，输出应与矩形结果一致。
-两者都设为 1.5 得到弦长 1.5 的矩形翼，坐标与弦长 1 的基准不同。
-当前矩形和梯形共有厚度 1/30、半径 1/60；验证仍应检查实际输入尺寸。
+中轴线位于 x-z 平面。圆弧中点为原点，其切向为 +z，曲率圆心为 (R,0,0)。
+设总弯角为 alpha，半弧长 a=R*alpha/2（alpha 使用弧度）。
+圆弧内 theta=s/R：
+  C(s) = (R*(1-cos(theta)), 0, R*sin(theta))
+  T(s) = (sin(theta), 0, cos(theta))
+  N(s) = (cos(theta), 0, -sin(theta))
+两端以端点切向 T 直线延伸，圆弧和直段连接处位置、切向连续。
+连接处曲率从 1/R 变为 0，不额外加入过渡曲线。
 
-6. 本次遇到的问题与更新输入的方法
----------------------------------
-早期矩形备份实际厚度为 0.05。二维参数和输入后来更新到 1/30，但旧
-备份仍保持旧尺寸，梯形源半径也仍硬编码为 0.025。
-必须分别核对参数要求、实际输入几何、输出文件和验证备份。
+二维截面扣除自身圆心后，映射为：
+  P(x,y,s) = C(s) + x*N(s) + y*(0,1,0)
 
-当前 paramsDeformed.h 中 sourceThickness=1/30，两个源半径由其一半
-得到；目标厚度和目标半径也保留相同值。映射保持实际输入厚度，
-仅修改这些数值不会自动改变旧 InputMesh 的实体尺寸。
+T 和 N 正交且长度为 1，截面只整体旋转和平移。因此截面保持原半径，
+每个截面垂直于中轴线，不进行径向拉伸，也没有额外绕轴扭转。
+原 NekMesh 的 z 平面先对应到物理弧长 s；高阶点在相邻实际平面间按
+弧长插值，不能把轴向曲线的中间点简单四舍五入到某个网格平面。
 
-修改二维厚度、攻角、弦长后，应先重生成 Mesh2D 外网格和内网格。
-改变 wingn/tipn 后也必须重新拉伸。两个 make 脚本只检查拉伸文件是否
-存在，已经存在的旧文件不会自动更新。
-推荐顺序，在相应项目目录执行：
-  Mesh2D：bash make.sh；bash makein.sh
-  Merge3D/InputMesh：bash extrude.sh
-  Merge3D：bash make.sh --yes；bash makeDeformed.sh --yes
-同步 paramsDeformed.h 的源弦长、攻角和半径，使其匹配实际二维几何。
-wingn/tipn 声明格式需兼容 extrude.sh 中按字段读取整数的 awk。
-
-7. 验证、备份与可视化
+5. 高阶边、曲面与单元
 ---------------------
-映射测试：
+只移动 VERTEX 不足以得到正确的弯管几何。PipeMesh.cpp 会同时建立：
+  周向 E 曲线：各截面上的正圆弧。
+  轴向 E 曲线：弯曲区所有轴向边，含内部边，沿 C+x*N+y*B 取样。
+  F 曲面：弯曲区管壁侧面，同时具有周向圆弧和轴向弯曲，
+           使用 N*N 的张量积点阵（默认每面 6*6 个点）。
+
+内侧面对应二维直边，依靠两侧轴向曲线的高阶插值形成弯曲面；
+管壁需要显式 F 点阵，才能表示周向和轴向两种曲率的耦合。
+直段上的轴向边保持直线，直段圆柱侧面由周向圆弧和直边描述。
+管径和截面正圆是映射约束；Nektar 使用有限阶多项式表示这些曲线/面，
+在采样点之间仍是高阶近似，geometryPoints 与源圆弧点数决定几何阶数。
+实际使用的点数不低于源圆弧的点数。
+
+曲面点采用 Nektar 四边形局部顶点顺序 0,1,2,3；u 方向变化最快。
+检查器逐条核对 F 点阵四边与对应 E 曲线一致，以及 E 端点与顶点一致。
+
+CAD3D 修改集中在 Nektarpp.h/.cpp：
+  支持带参数的 std::function 变形回调；
+  同时处理 E 和 F 的所有插值点，F 不按边曲线反转；
+  大曲面点阵使用动态文本缓冲；
+  缺少 CURVED 时安全处理，并检查 XML 读写和插值点数量。
+中轴线/分布在 BentPipe.h，正圆扫掠和曲面构造在 PipeMesh.cpp，
+原 MeshRegion 的点/边/面/单元拓扑结构继续复用。
+原有 LoadXml、DeformPts(void*) 接口保留；新增回调接口可以携带参数。
+旧接口与新接口的曲边/顶点结果一致性，以及大 F 点阵读写，有回归测试。
+错误处理有所变化：XML 读写失败现在抛出异常，需要调用方处理。
+坐标文本改为动态缓冲和科学计数法，数值可往返读取，但文件字节格式
+不保证与旧版本一致。
+
+6. 内侧重叠与质量检查
+---------------------
+若管内半径为 r，必须保证 R>r，否则最内侧曲率半径 R-r 非正，
+法向截面会塌缩、翻转或重叠。程序根据实际输入半径检查这一条件，
+不满足时停止生成。
+
+圆弧区连续映射对 (x,y,s) 的 Jacobian 为 1-x/R；
+最小几何因子为 1-r/R。直段因子为 1。
+样例 r=0.5、R=2，内侧半径为 1.5，最小连续因子约 0.75。
+这是连续映射条件，不等于实际单元的最小缩放 Jacobian；半径接近 r
+时，即使条件成立，仍可能产生非常扁的内侧单元。
+make.sh 必须通过实际高阶 NekMesh 检查和几何核对后才发布压缩输出。
+
+测试：
   ctest --test-dir build --output-on-failure
+  python3 checks/verify_pipe_mesh.py
+  NekMesh -m jac:list pipe.xml verification/pipecheck.xml -f
+需要详细质量统计时：
+  NekMesh -m jac:list:histo=1,10,10:quality pipe.xml verification/pipecheck.xml -f
 
-几何与拓扑比较，默认根部 1.5、翼尖 0.5、半径 1/60：
-  python3 checks/verify_trapezoid_mesh.py test.xml deformed.xml
-检查矩形本身尺寸和圆角：
-  python3 checks/verify_trapezoid_mesh.py test.xml test.xml --root-chord 1 --tip-chord 1
-其他半径可显式传入 --radius。
-脚本核对所有翼身截面的弦长、厚度、圆角和曲边端点，并检查法向/展向
-坐标、固定远场、拓扑、composite 编号及边界定义。
+样例实跑结果：
+  129 个正圆截面，98,048 个单元；
+  76,800 个六面体，21,248 个棱柱；
+  55,368 条高阶边，4,608 个显式高阶管壁面；
+  所有截面垂直、半径保持，曲面与边曲线匹配，拓扑未变；
+  负 Jacobian 单元数为 0。
 
-实际网格的 Jacobian：
-  NekMesh -m jac:list deformed.xml deformedcomp.xml -f
-makeDeformed.sh 已执行此检查。更详细报告：
-  NekMesh -m jac:list:histo=1,10,10:quality deformed.xml deformedcomp.xml -f
-CheckMesh() 主要检查拓扑和边界，不检查负 Jacobian 或单元翻转。
-连续映射的 JacobianLowerBound()>0 不能替代实际高阶网格检查。
+7. 边界与 MHD 使用
+------------------
+C0：全部圆管壁面。
+C1：入口（最小 s 的截面）。
+C2：出口（最大 s 的截面）。
+C100、C101：六面体/棱柱体区域，不与边界编号冲突。
+程序保留入口、出口和管壁各自独立的 composite，不按圆弧转角重新合并。
 
-每份矩形基准应保存未压缩/压缩 XML、params3D.h、对应的二维参数和
-源文件，记录实际厚度、半径及 SHA256。
-新基准保存于 verification/rectangular_reference_1_30_<时间戳>/。
-verification/current_rectangular_reference.txt 记录当前正确基准的路径。
-保留旧备份并明确标记其尺寸和历史版本身份。
+这里输出几何网格。MHD 的场变量、磁场方向、流动边界条件和导电壁/
+绝缘壁条件应在求解器的 session 中设置。几何插值阶数与求解场的
+NUMMODES 是不同设置，当前输出的初始 EXPANSIONS 用于读取/查看网格。
 
 可视化：
-  FieldConvert testcomp.xml testcomp.plt -f
-  FieldConvert deformedcomp.xml deformedcomp.plt -f
+  FieldConvert pipecomp.xml pipe.plt -f
   bash extractSurf.sh
-extractSurf.sh 默认从 testcomp.xml 提取 surf0 到 surf7，即矩形网格。
-查看梯形用 deformedcomp.plt，或另外从 deformedcomp.xml 提取表面。
-重新生成 XML 后，旧 plt/surf 文件不会自动更新。
-
-当前半翼边界编号：
-C0：翼身壁面；C7：翼尖壁面，z=5。
-C1：入口 x=-40；C2：出口 x=60。
-C3：下边界 y=-40；C4：上边界 y=40。
-C5：翼根/对称平面 z=0；C6：侧边界 z=9。
-改变源网格边界拆分方式后需要重新核对编号。
+extractSurf.sh 提取 C0/C1/C2 到 pipe_wall、pipe_inlet、pipe_outlet 文件。

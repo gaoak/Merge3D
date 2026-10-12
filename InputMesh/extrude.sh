@@ -1,10 +1,15 @@
-if [ -d ../../Mesh2D/build ]; then
-  cp ../../Mesh2D/build/wallmapping.dat  ../../Mesh2D/build/outerRegion.xml  ../../Mesh2D/build/outerRegion_Otip.xml  ../../Mesh2D/build/inFoil.xml .
+#!/usr/bin/env bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+if ! command -v NekMesh >/dev/null 2>&1 && type module >/dev/null 2>&1; then
+  module load nektar++
 fi
-rm 3DoutUcomp.xml  3DoutUcomp2.xml  3DinUcomp.xml
-wingn=`cat ../params3D.h | awk '{if($2=="wingn") print $4}'`
-tipn=`cat ../params3D.h | awk '{if($2=="tipn") print $4}'`
-tipn1=$((tipn+1))
-NekMesh -m extrude:layers=${wingn} outerRegion.xml 3DoutUcomp.xml:xml:uncompress
-NekMesh -m extrude:layers=${tipn}  outerRegion_Otip.xml 3DoutUcomp2.xml:xml:uncompress
-NekMesh -m extrude:layers=${tipn1} inFoil.xml 3DinUcomp.xml:xml:uncompress
+layers="${1:-$(./build/mesh --layers)}"
+if [[ ! "$layers" =~ ^[0-9]+$ ]] || (( layers < 2 )); then
+  echo "Extrusion layer count must be an integer >= 2." >&2
+  exit 1
+fi
+[[ -s InputMesh/inFoil.xml ]] || { echo "Missing InputMesh/inFoil.xml" >&2; exit 1; }
+# Use the user's current circle mesh. Always re-extrude to avoid stale inputs.
+NekMesh -m "extrude:layers=${layers}:length=1" InputMesh/inFoil.xml \
+  InputMesh/pipeStraight.xml:xml:uncompress -f
