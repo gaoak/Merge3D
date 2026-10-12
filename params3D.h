@@ -14,9 +14,9 @@ inline PipeParameters pipeParameters() {
   p.bendRadius = 2.0;       // Must exceed the actual pipe radius.
   p.inletExtension = 10.0;   // Straight tangent length before the arc.
   p.outletExtension = 20.0;  // Straight tangent length after the arc.
-  p.inletLayers = 34;        // Specified inlet straight cell count.
-  p.bendLayers = 32;         // Uniform bend cells; spacing = R * angle / count.
-  p.outletLayers = 45;       // Specified outlet straight cell count.
+  p.inletLayers = 25;        // Specified inlet straight cell count.
+  p.bendLayers = 16;         // Uniform bend cells; spacing = R * angle / count.
+  p.outletLayers = 50;       // Specified outlet straight cell count.
   p.inletGrowthRate = 1.06;  // Growth from bend entry towards inlet.
   p.outletGrowthRate = 1.06; // Growth from bend exit towards outlet.
   p.geometryPoints = 6;     // At least the input circle's curve point count.
