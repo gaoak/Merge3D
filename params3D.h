@@ -2,22 +2,23 @@
 #define PIPE_PARAMETERS_H
 #include "BentPipe.h"
 
-// NekMesh extrude:layers; the plane count is extrudeLayers + 1.
-constexpr int extrudeLayers = 128;
+// NekMesh extrusion layers = inletLayers + bendLayers + outletLayers.
 constexpr const char *straightMesh = "InputMesh/pipeStraight.xml";
 constexpr const char *outputMesh = "pipe.xml";
 
-// Arc centered at s=0, bent in the x-z plane; the tangent at s=0 is +z.
+// Bend entry is (0,0,0), inlet tangent is +x; bend turns towards +z.
 // Cross-sections are circles; their radius is read from the input mesh.
 inline PipeParameters pipeParameters() {
   PipeParameters p;
-  p.bendAngleDegrees = 90.0; // Total turning angle, 0..180 degrees.
+  p.bendAngleDegrees = 90.0; // Total turning angle, 0 < angle <= 180 degrees.
   p.bendRadius = 2.0;       // Must exceed the actual pipe radius.
-  p.inletExtension = 2.0;   // Straight tangent length before the arc.
-  p.outletExtension = 2.0;  // Straight tangent length after the arc.
-  p.centerSpacing = 0.02;   // First cell length on BOTH sides of s=0.
-  p.growthRate = 1.08;      // Exponential growth, then an equal-spacing tail.
-  p.inletLayers = 64;       // Outlet layers = actual source planes - 1 - this.
+  p.inletExtension = 10.0;   // Straight tangent length before the arc.
+  p.outletExtension = 20.0;  // Straight tangent length after the arc.
+  p.inletLayers = 34;        // Specified inlet straight cell count.
+  p.bendLayers = 32;         // Uniform bend cells; spacing = R * angle / count.
+  p.outletLayers = 45;       // Specified outlet straight cell count.
+  p.inletGrowthRate = 1.06;  // Growth from bend entry towards inlet.
+  p.outletGrowthRate = 1.06; // Growth from bend exit towards outlet.
   p.geometryPoints = 6;     // At least the input circle's curve point count.
   return p;
 }

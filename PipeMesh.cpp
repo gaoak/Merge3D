@@ -270,14 +270,18 @@ void GeneratePipeMesh(const BentPipe &pipe, const std::string &input,
   const auto source = PrepareSource(mesh);
   const double factor = pipe.CheckRadius(source.radius);
   const int layers = static_cast<int>(source.planes.size()) - 1;
-  const auto stations = pipe.Stations(layers);
+  if (layers != pipe.TotalLayers())
+    throw std::invalid_argument("Source extrusion layer count differs from the three-segment "
+                                "distribution; run bash make.sh to re-extrude");
+  const auto stations = pipe.Stations();
   const PipeStations axis(source.planes, stations);
   std::cout << "Input section radius: " << source.radius
             << "; bend radius: " << pipe.Parameters().bendRadius
             << "; inner radius: " << pipe.Parameters().bendRadius - source.radius
             << "; continuous Jacobian factor >= " << factor << '\n';
-  std::cout << "Layers: " << layers << " = " << pipe.Parameters().inletLayers
-            << " inlet + " << layers - pipe.Parameters().inletLayers << " outlet\n";
+  std::cout << "Layers: " << layers << " = " << pipe.InletLayers()
+            << " inlet + " << pipe.Parameters().bendLayers << " bend + "
+            << pipe.OutletLayers() << " outlet; bend spacing: " << pipe.BendSpacing() << '\n';
   PrepareCurvedGeometry(mesh, pipe, source, axis);
   mesh.DeformPts(std::function<void(double *)>([&](double *p) {
     const auto mapped = pipe.Map(p[0] - source.x, p[1] - source.y, axis.At(p[2]));
@@ -300,11 +304,13 @@ void GeneratePipeMesh(const BentPipe &pipe, const std::string &input,
           << ",\n  \"source_center_y\": " << source.y
           << ",\n  \"inlet_extension\": " << p.inletExtension
           << ",\n  \"outlet_extension\": " << p.outletExtension
-          << ",\n  \"center_spacing\": " << p.centerSpacing
-          << ",\n  \"growth_rate\": " << p.growthRate
+          << ",\n  \"bend_spacing\": " << pipe.BendSpacing()
+          << ",\n  \"bend_layers\": " << p.bendLayers
+          << ",\n  \"inlet_growth_rate\": " << p.inletGrowthRate
+          << ",\n  \"outlet_growth_rate\": " << p.outletGrowthRate
           << ",\n  \"layers\": " << layers
-          << ",\n  \"inlet_layers\": " << p.inletLayers
-          << ",\n  \"outlet_layers\": " << layers - p.inletLayers
+          << ",\n  \"inlet_layers\": " << pipe.InletLayers()
+          << ",\n  \"outlet_layers\": " << pipe.OutletLayers()
           << ",\n  \"minimum_continuous_jacobian_factor\": " << factor
           << ",\n  \"vertices\": " << mesh.m_pts.size()
           << ",\n  \"elements\": " << mesh.m_cells.size() << "\n}\n";

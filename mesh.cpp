@@ -5,8 +5,9 @@
 
 int main(int argc, char *argv[]) {
   try {
+    const BentPipe pipe(pipeParameters());
     if (argc == 2 && std::string(argv[1]) == "--layers") {
-      std::cout << extrudeLayers << '\n';
+      std::cout << pipe.TotalLayers() << '\n';
       return 0;
     }
     if (argc == 2 && std::string(argv[1]) == "--help") {
@@ -17,9 +18,7 @@ int main(int argc, char *argv[]) {
     }
     if (argc != 1)
       throw std::invalid_argument("Unknown arguments; use --help");
-    if (extrudeLayers < 2)
-      throw std::invalid_argument("extrudeLayers must be at least 2");
-    GeneratePipeMesh(BentPipe(pipeParameters()), straightMesh, outputMesh);
+    GeneratePipeMesh(pipe, straightMesh, outputMesh);
     return 0;
   } catch (const std::exception &error) {
     std::cerr << "Pipe mesh generation failed: " << error.what() << '\n';

@@ -79,42 +79,62 @@ def main():
         axis = [{key: float(value) for key, value in row.items()}
                 for row in csv.DictReader(f)]
     require(len(axis) == metadata["layers"]+1, "Incorrect actual plane count")
-    require(metadata["outlet_layers"] == metadata["layers"]-metadata["inlet_layers"],
-            "Outlet layer count was not derived from source planes")
-    middle = metadata["inlet_layers"]
-    require(axis[middle]["s"] == 0., "Missing bend-center plane")
-    require(abs(axis[middle+1]["s"]-axis[middle]["s"]-metadata["center_spacing"]) < 1e-10,
-            "Wrong center spacing on outlet side")
-    require(abs(axis[middle]["s"]-axis[middle-1]["s"]-metadata["center_spacing"]) < 1e-10,
-            "Wrong center spacing on inlet side")
-    for side, count in ((-1, middle), (1, len(axis)-1-middle)):
-        previous = metadata["center_spacing"]
+    entry = metadata["inlet_layers"]
+    exit = entry + metadata["bend_layers"]
+    require(exit + metadata["outlet_layers"] == metadata["layers"],
+            "Three segment counts do not match actual extrusion layers")
+    arc_length = metadata["bend_radius"]*math.radians(metadata["bend_angle_degrees"])
+    spacing = arc_length/metadata["bend_layers"]
+    require(abs(spacing-metadata["bend_spacing"]) < 1e-10, "Wrong bend spacing")
+    require(axis[entry]["s"] == 0. and abs(axis[exit]["s"]-arc_length) < 1e-10,
+            "Missing exact bend entry/exit planes")
+    for i in range(entry+1, exit+1):
+        require(abs(axis[i]["s"]-axis[i-1]["s"]-spacing) < 1e-10,
+                "Bend cells are not uniform")
+    for start, side, count, growth in (
+            (entry, -1, entry, metadata["inlet_growth_rate"]),
+            (exit, 1, metadata["outlet_layers"], metadata["outlet_growth_rate"])):
+        if not count:
+            continue
+        first = side*(axis[start+side]["s"]-axis[start]["s"])
+        require(abs(first-spacing) < 1e-10, "Straight/bend interface spacing differs")
+        previous = first
+        geometric_length = first
         for i in range(2, count+1):
-            ds = side*(axis[middle+side*i]["s"]-axis[middle+side*(i-1)]["s"])
-            require(previous-1e-10 <= ds <= previous*metadata["growth_rate"]+1e-10,
-                    "Axial spacing decreases or exceeds growth rate")
+            ds = side*(axis[start+side*i]["s"]-axis[start+side*(i-1)]["s"])
+            require(previous-1e-10 <= ds <= previous*growth+1e-10,
+                    "Straight spacing decreases or exceeds its growth rate")
             previous = ds
+            geometric_length += spacing*growth**(i-1)
+        length = metadata["inlet_extension" if side < 0 else "outlet_extension"]
+        require(spacing*count <= length+1e-10 and geometric_length >= length-1e-10,
+                "Straight length cannot fit its specified count, spacing and growth rate")
     require(target["points"].keys() == source["points"].keys(), "Vertex IDs changed")
     for kind in ("EDGE", "FACE", "ELEMENT"):
         require(target[kind] == source[kind], f"{kind} topology changed")
 
     R = metadata["bend_radius"]
     r = metadata["pipe_radius"]
-    half = R*math.radians(metadata["bend_angle_degrees"])/2.
-    require(half == 0. or R > r, "Inner curvature radius is not positive")
-    require(abs(axis[0]["s"]+half+metadata["inlet_extension"]) < 1e-10,
+    require(R > r, "Inner curvature radius is not positive")
+    require(abs(axis[0]["s"]+metadata["inlet_extension"]) < 1e-10,
             "Incorrect inlet extension")
-    require(abs(axis[-1]["s"]-half-metadata["outlet_extension"]) < 1e-10,
+    require(abs(axis[-1]["s"]-arc_length-metadata["outlet_extension"]) < 1e-10,
             "Incorrect outlet extension")
 
     def frame(s):
-        arc = max(-half, min(half, s))
+        arc = max(0., min(arc_length, s))
         phi = arc/R
-        t = (math.sin(phi), 0., math.cos(phi))
-        n = (math.cos(phi), 0., -math.sin(phi))
-        c = (R*(1.-math.cos(phi))+(s-arc)*t[0], 0.,
-             R*math.sin(phi)+(s-arc)*t[2])
+        t = (math.cos(phi), 0., math.sin(phi))
+        n = (math.sin(phi), 0., -math.cos(phi))
+        c = (R*math.sin(phi)+(s-arc)*t[0], 0.,
+             R*(1.-math.cos(phi))+(s-arc)*t[2])
         return c, t, n
+
+    for row in axis[:entry+1]:
+        require(abs(row["center_x"]-row["s"]) < 1e-10 and
+                abs(row["center_y"])+abs(row["center_z"]) < 1e-10 and
+                abs(row["tangent_x"]-1.)+abs(row["tangent_y"])+abs(row["tangent_z"]) < 1e-10,
+                "Inlet centerline is not parallel to +x")
 
     plane_map = {row["source_z"]: row["s"] for row in axis}
     source_planes = sorted(plane_map)

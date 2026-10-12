@@ -13,9 +13,11 @@ struct PipeParameters {
   double bendRadius = 2.;
   double inletExtension = 2.;
   double outletExtension = 2.;
-  double centerSpacing = .02;
-  double growthRate = 1.08;
-  int inletLayers = 64;
+  int inletLayers = 14;
+  int bendLayers = 32;
+  int outletLayers = 14;
+  double inletGrowthRate = 1.06;
+  double outletGrowthRate = 1.06;
   int geometryPoints = 6;
 };
 
@@ -28,36 +30,45 @@ public:
 
   explicit BentPipe(const PipeParameters &p) : m_parameters(p) {
     const double values[] = {p.bendAngleDegrees, p.bendRadius, p.inletExtension,
-                             p.outletExtension, p.centerSpacing, p.growthRate};
+                             p.outletExtension, p.inletGrowthRate, p.outletGrowthRate};
     for (double value : values)
       if (!std::isfinite(value))
         throw std::invalid_argument("Pipe parameters must be finite");
-    if (p.bendAngleDegrees < 0. || p.bendAngleDegrees > 180. ||
+    if (p.bendAngleDegrees <= 0. || p.bendAngleDegrees > 180. ||
         p.bendRadius <= 0. || p.inletExtension < 0. ||
-        p.outletExtension < 0. || p.centerSpacing <= 0. ||
-        p.growthRate < 1. || p.inletLayers < 1 ||
+        p.outletExtension < 0. || p.bendLayers < 1 ||
+        p.inletLayers < 0 || p.outletLayers < 0 ||
+        p.inletGrowthRate < 1. || p.outletGrowthRate < 1. ||
         p.geometryPoints < 2 || p.geometryPoints > 12)
       throw std::invalid_argument("Invalid bend, spacing or geometry parameters");
-    m_halfArc = p.bendRadius * p.bendAngleDegrees * std::acos(-1.) / 360.;
-    if (!std::isfinite(InletLength()) || !std::isfinite(OutletLength()) ||
-        InletLength() <= 0. || OutletLength() <= 0.)
-      throw std::invalid_argument("Both sides of the bend center need positive length");
+    m_arcLength = p.bendRadius * (p.bendAngleDegrees * std::acos(-1.) / 180.);
+    if (!std::isfinite(m_arcLength + p.outletExtension) ||
+        !std::isfinite(BendSpacing()) || BendSpacing() <= 0.)
+      throw std::invalid_argument("Invalid arc length or bend spacing");
+    if (p.bendLayers > 1000000 || p.inletLayers > 1000000 - p.bendLayers ||
+        p.outletLayers > 1000000 - p.bendLayers - p.inletLayers || TotalLayers() < 2)
+      throw std::invalid_argument("Total layer count must be between 2 and 1000000");
+    m_inlet = StraightStations(p.inletExtension, p.inletLayers, p.inletGrowthRate);
+    m_outlet = StraightStations(p.outletExtension, p.outletLayers, p.outletGrowthRate);
   }
 
-  double InletLength() const { return m_halfArc + m_parameters.inletExtension; }
-  double OutletLength() const { return m_halfArc + m_parameters.outletExtension; }
-  double HalfArc() const { return m_halfArc; }
+  double ArcLength() const { return m_arcLength; }
+  double BendSpacing() const { return m_arcLength / m_parameters.bendLayers; }
+  int InletLayers() const { return m_parameters.inletLayers; }
+  int OutletLayers() const { return m_parameters.outletLayers; }
+  int TotalLayers() const { return InletLayers() + m_parameters.bendLayers + OutletLayers(); }
   const PipeParameters &Parameters() const { return m_parameters; }
 
   Frame At(double s) const {
-    const double arcS = std::max(-m_halfArc, std::min(m_halfArc, s));
+    const double arcS = std::max(0., std::min(m_arcLength, s));
     const double theta = arcS / m_parameters.bendRadius;
     const double sine = std::sin(theta), cosine = std::cos(theta);
-    // Center of the bend lies at (R,0,0); s=0 is the middle of the arc.
+    // Bend entry is the origin; inlet tangent is +x, bend turns towards +z.
+    // N points outward; N x (0,1,0) = T preserves source orientation.
     const double h = std::sin(theta / 2.);
-    Frame f{{2. * m_parameters.bendRadius * h * h, 0.,
-              m_parameters.bendRadius * sine},
-             {sine, 0., cosine}, {cosine, 0., -sine}};
+    Frame f{{m_parameters.bendRadius * sine, 0.,
+              2. * m_parameters.bendRadius * h * h},
+             {cosine, 0., sine}, {sine, 0., -cosine}};
     for (int i = 0; i < 3; ++i)
       f.center[i] += (s - arcS) * f.tangent[i];
     return f;
@@ -72,49 +83,52 @@ public:
   double CheckRadius(double sectionRadius) const {
     if (!std::isfinite(sectionRadius) || sectionRadius <= 0.)
       throw std::invalid_argument("Invalid input cross-section radius");
-    if (m_halfArc > 0. && m_parameters.bendRadius <= sectionRadius * (1. + 1e-8))
+    if (m_parameters.bendRadius <= sectionRadius * (1. + 1e-8))
       throw std::invalid_argument("Bend radius must exceed the actual pipe radius; "
                                   "otherwise inner-side sections fold/overlap");
-    return m_halfArc == 0. ? 1. : 1. - sectionRadius / m_parameters.bendRadius;
+    return 1. - sectionRadius / m_parameters.bendRadius;
   }
 
   bool CurvesLayer(double s0, double s1) const {
-    return m_halfArc > 0. && std::min(s0, s1) < m_halfArc &&
-           std::max(s0, s1) > -m_halfArc;
+    const double tol = 1e-12 * std::max(1., m_arcLength);
+    return std::min(s0, s1) < m_arcLength - tol && std::max(s0, s1) > tol;
   }
 
-  std::vector<double> Stations(int totalLayers) const {
-    const int rightCount = totalLayers - m_parameters.inletLayers;
-    if (rightCount <= 0)
-      throw std::invalid_argument("inletLayers must be smaller than the actual "
-                                  "number of extruded layers");
-    const auto left = HalfStations(InletLength(), m_parameters.inletLayers);
-    const auto right = HalfStations(OutletLength(), rightCount);
+  std::vector<double> Stations() const {
     std::vector<double> result;
-    result.reserve(totalLayers + 1);
-    for (int i = m_parameters.inletLayers; i > 0; --i)
-      result.push_back(-left[i]);
-    result.insert(result.end(), right.begin(), right.end());
+    result.reserve(TotalLayers() + 1);
+    for (int i = InletLayers(); i > 0; --i)
+      result.push_back(-m_inlet[i]);
+    for (int i = 0; i <= m_parameters.bendLayers; ++i)
+      result.push_back(m_arcLength * (static_cast<double>(i) / m_parameters.bendLayers));
+    for (int i = 1; i <= OutletLayers(); ++i)
+      result.push_back(m_arcLength + m_outlet[i]);
     return result;
   }
 
 private:
-  std::vector<double> HalfStations(double length, int count) const {
-    const double first = m_parameters.centerSpacing;
-    const double growth = m_parameters.growthRate;
+  std::vector<double> StraightStations(double length, int count, double growth) const {
+    if (length == 0. && count == 0)
+      return {0.};
+    if (length == 0. || count == 0)
+      throw std::invalid_argument("Straight length and its layer count must both be zero "
+                                  "or both positive");
+    const double first = BendSpacing();
     if (first > length / count * (1. + 1e-12))
-      throw std::invalid_argument("centerSpacing * side layer count exceeds "
-                                  "side length; reduce spacing or layer count");
-    // All spacings must grow by at most growth. If even the full geometric
-    // series is too short, these independently chosen constraints cannot fit.
+      throw std::invalid_argument("Bend spacing times straight layer count exceeds "
+                                  "straight length; reduce that count or increase bendLayers");
+    if (count == 1 && std::fabs(length - first) > first * 1e-12)
+      throw std::invalid_argument("A one-layer straight must have exactly the bend spacing");
+    // Fixed count and exact first spacing. The specified rate bounds growth;
+    // cap it with a uniform tail to reach the prescribed straight endpoint.
     double possible = 0., step = first;
     for (int i = 0; i < count && possible < length; ++i) {
       possible += step;
       step *= growth;
     }
     if (possible < length * (1. - 1e-12))
-      throw std::invalid_argument("Too few side layers to reach its end with "
-                                  "the specified centerSpacing/growthRate");
+      throw std::invalid_argument("Straight layer count cannot reach its length with "
+                                  "the specified bend spacing/growth rate; increase count or rate");
 
     std::vector<double> nodes(1, 0.);
     double remaining = length;
@@ -139,7 +153,8 @@ private:
   }
 
   PipeParameters m_parameters;
-  double m_halfArc;
+  double m_arcLength;
+  std::vector<double> m_inlet, m_outlet;
 };
 
 // Linear reparameterization between the actual source extrusion planes.
