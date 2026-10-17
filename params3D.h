@@ -23,7 +23,7 @@ double trailingEdgeRadius = 0.5 * sourceThickness; // 1/60
 // Root leading edge stays at (0,0,0). Tip offset is measured along local +u.
 double rootChord = 1.5;
 double tipChord = 0.5;
-double tipLEOffset = 0.;
+double tipLEOffset =1.;
 
 // The corrected rectangular source and trapezoid share these dimensions.
 // TrapezoidWing preserves the thickness/radii of the actual input mesh;
