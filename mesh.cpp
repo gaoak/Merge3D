@@ -7,7 +7,6 @@ merge 3D nektar mesh at Re 400
 #include "CAD3D/Util.h"
 #include "TrapezoidWing.h"
 #include "params3D.h"
-#include "paramsDeformed.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>

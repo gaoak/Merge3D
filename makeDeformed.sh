@@ -18,7 +18,7 @@ for input in 3DoutUcomp.xml 3DoutUcomp2.xml 3DinUcomp.xml; do
 done
 cmake -S . -B build
 cmake --build build
-# Deformation dimensions are configured separately in paramsDeformed.h.
+# Geometry and deformation parameters are configured in params3D.h.
 ./build/mesh "$@" --deformed --output deformed.xml
 NekMesh -m jac:list deformed.xml deformedcomp.xml -f
 echo "Deformed mesh: deformed.xml, deformedcomp.xml"

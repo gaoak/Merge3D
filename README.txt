@@ -5,7 +5,7 @@ Merge3D：矩形与梯形机翼网格生成及验证经验
 ---------------
 矩形源机翼：弦长 1、半展长 5、攻角 15 度。
 矩形和梯形机翼厚度均为 1/30，前后缘均为半圆，半径均为 1/60。
-梯形机翼：翼根弦长 1.5、翼尖弦长 0.5、翼尖前缘偏移 0.5。
+梯形机翼：翼根弦长 1.5、翼尖弦长 0.5；当前翼尖前缘偏移为 0。
 翼根前缘固定为 (0,0,0)，前缘和后缘位置均沿展向线性变化。
 z=0 是翼根，z=5 是翼尖；当前计算域另一侧位于 z=9。
 
@@ -24,9 +24,9 @@ make.sh：矩形入口，输出 test.xml、testcomp.xml。
 makeDeformed.sh：梯形入口，输出 deformed.xml、deformedcomp.xml。
 mesh.cpp：共用的重映射、拼接、输出主程序；默认矩形，--deformed
 启用梯形，--rectangular 显式选择矩形。
-params3D.h：共享的展长、层数、翼尖间距、翼尖外侧增长倍率和计算域。
-paramsDeformed.h：源截面尺寸、攻角、rootChord、tipChord、tipLEOffset
-和流体网格的过渡范围。
+params3D.h：唯一的参数头文件，统一配置展长、层数、翼尖间距、
+翼尖外侧增长倍率、计算域、源截面尺寸、攻角、rootChord、tipChord、
+tipLEOffset 和流体网格的过渡范围。
 TrapezoidWing.h：固定翼根前缘、保持厚度和圆角的逐截面变换。
 CAD3D/Nektarpp.cpp：XML 读取、展向重映射、顶点和曲边变形。
 CAD3D/MeshRegion.cpp：点/边/面拼接、边界与体区域整理、拓扑检查。
@@ -64,7 +64,7 @@ spanlength+tipoffset。第二块从外扩平面延伸到 domainz；第三块从
 翼尖延伸到 domainz，底层保持实体轮廓，其余层边界通过 wallmapping
 外扩。这样形成翼尖过渡层和可匹配的三块接口。
 
-翼尖外侧的 z 向增长倍率由 params3D.h 的 tiphzgrowth 指定，默认 2.0，
+翼尖外侧的 z 向增长倍率由 params3D.h 的 tiphzgrowth 指定，当前为 1.6，
 必须为有限值且 >=1。翼尖后的第一层厚度为 tipoffset；后续边界层
 间距依次为 tipoffset*tiphzgrowth、tipoffset*tiphzgrowth^2 等。
 tipoffset 默认等于 hFirstLayer；单独修改 tipoffset 不改变翼身段的
@@ -91,7 +91,7 @@ Mesh2D 的坐标约定：
   v = x*sin(AoA) + y*cos(AoA)
 
 源前缘 u=0，源后缘 u=sourceChord。变换只改变 u，保持 v、z。
-形状由 paramsDeformed.h 的三个参数指定，长度单位与源网格相同：
+形状由 params3D.h 的三个参数指定，长度单位与源网格相同：
   rootChord：翼根弦长。
   tipChord：翼尖弦长。
   tipLEOffset：翼尖前缘相对翼根前缘沿剖面弦向 +u 的偏移量。
@@ -107,7 +107,7 @@ tipLEOffset=0 保持前缘沿展向不变；tipLEOffset=rootChord-tipChord
 保持后缘沿展向不变（其位置为 rootChord，不再默认等于 sourceChord）。
 超过翼尖时沿用翼尖位置和弦长，保持三块接口一致。
 
-当前参数 rootChord=1.5、tipChord=0.5、tipLEOffset=0.5：
+示例参数 rootChord=1.5、tipChord=0.5、tipLEOffset=0.5：
 翼根局部范围 [0,1.5]，翼尖局部范围 [0.5,1.0]，前后缘各收缩 0.5。
 局部尖点 (u,0,z) 的全局坐标为 (u*cos(AoA),-u*sin(AoA),z)。
 例如翼尖前缘为 (0.5*cos(15deg),-0.5*sin(15deg),5)。
@@ -150,7 +150,7 @@ rootChord=tipChord=1.5、tipLEOffset=0 会得到弦长 1.5、前缘仍在 u=0
 备份仍保持旧尺寸，梯形源半径也仍硬编码为 0.025。
 必须分别核对参数要求、实际输入几何、输出文件和验证备份。
 
-当前 paramsDeformed.h 中 sourceThickness=1/30，两个源半径由其一半
+当前 params3D.h 中 sourceThickness=1/30，两个源半径由其一半
 得到；目标厚度和目标半径也保留相同值。映射保持实际输入厚度，
 仅修改这些数值不会自动改变旧 InputMesh 的实体尺寸。
 
@@ -161,7 +161,7 @@ rootChord=tipChord=1.5、tipLEOffset=0 会得到弦长 1.5、前缘仍在 u=0
   Mesh2D：bash make.sh；bash makein.sh
   Merge3D/InputMesh：bash extrude.sh
   Merge3D：bash make.sh --yes；bash makeDeformed.sh --yes
-同步 paramsDeformed.h 的源弦长、攻角和半径，使其匹配实际二维几何。
+同步 params3D.h 的源弦长、攻角和半径，使其匹配实际二维几何。
 wingn/tipn 声明格式需兼容 extrude.sh 中按字段读取整数的 awk。
 
 7. 验证、备份与可视化
