@@ -9,13 +9,16 @@ merge 3D nektar mesh at Re 400
 #include "params3D.h"
 #include "paramsDeformed.h"
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <string>
 using namespace std;
 static double anckerz[4][2];
-double offset = hFirstLayer;
+double offset = tipoffset;
 static void init() {
+  if (!std::isfinite(tiphzgrowth) || tiphzgrowth < 1.)
+    throw invalid_argument("tiphzgrowth must be finite and >= 1");
   anckerz[0][0] = 0.;
   anckerz[0][1] = 0.;
   anckerz[1][0] = spanlength;
@@ -33,9 +36,10 @@ static void setzscale(vector<double> &targz1, vector<double> &targz2,
   targz1.clear();
   targz2.clear();
   targz3.clear();
-  LineEdge line0(anckerz[0], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, offset,
+  LineEdge line0(anckerz[0], anckerz[1], N0, BOUNDARYLAYER1, 0, 0, 0, hFirstLayer,
                  2., 5);
-  LineEdge line1(anckerz[2], anckerz[3], N1, BOUNDARYLAYER0, 2. * offset, 2., 7,
+  LineEdge line1(anckerz[2], anckerz[3], N1, BOUNDARYLAYER0,
+                 tiphzgrowth * offset, tiphzgrowth, 7,
                  0, 0, 0);
   vector<double> p;
   for (int i = 0; i <= line0.m_N; ++i) {
@@ -80,9 +84,9 @@ static double detectSingular(double x, double y, double z) {
 
 static const TrapezoidWing &wingTransform() {
   static const TrapezoidWing mapping(
-      sourceChord, rootChord, tipChord, spanlength, foilAngleDegrees,
+      sourceChord, rootChord, tipChord, tipLEOffset, spanlength, foilAngleDegrees,
       leadingEdgeRadius, trailingEdgeRadius, taperNearNormal, taperFarNormal,
-      taperNearUpstream, taperFarUpstream);
+      taperNearUpstream, taperFarUpstream, taperNearDownstream, taperFarDownstream);
   return mapping;
 }
 
@@ -114,6 +118,7 @@ static int generateMesh(int argc, char *argv[]) {
     output = deformed ? "deformed.xml" : "test.xml";
   if (deformed)
     cout << "Trapezoid chord: root=" << rootChord << ", tip=" << tipChord
+         << ", tip leading-edge offset=" << tipLEOffset
          << ", continuous mapping Jacobian >= "
          << wingTransform().JacobianLowerBound() << endl;
   init();

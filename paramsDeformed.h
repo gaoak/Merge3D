@@ -10,9 +10,10 @@ double leadingEdgeRadius = 0.5 * sourceThickness;  // 1/60
 double trailingEdgeRadius = 0.5 * sourceThickness; // 1/60
 
 // Used only by makeDeformed.sh / mesh --deformed.
-// Fix the trailing edge and linearly taper the chord over spanlength.
+// Root leading edge stays at (0,0,0). Tip offset is measured along local +u.
 double rootChord = 1.5;
 double tipChord = 0.5;
+double tipLEOffset = 0.;
 
 // The corrected rectangular source and trapezoid share these dimensions.
 // TrapezoidWing preserves the thickness/radii of the actual input mesh;
@@ -26,5 +27,7 @@ double taperNearNormal = 0.1;
 double taperFarNormal = 5.0;
 double taperNearUpstream = -1.0;
 double taperFarUpstream = -5.0;
+double taperNearDownstream = 2.0;
+double taperFarDownstream = 6.0;
 
 #endif

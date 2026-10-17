@@ -5,7 +5,8 @@ Merge3D：矩形与梯形机翼网格生成及验证经验
 ---------------
 矩形源机翼：弦长 1、半展长 5、攻角 15 度。
 矩形和梯形机翼厚度均为 1/30，前后缘均为半圆，半径均为 1/60。
-梯形机翼：翼根弦长 1.5、翼尖弦长 0.5，后缘固定，弦长沿展向线性变化。
+梯形机翼：翼根弦长 1.5、翼尖弦长 0.5、翼尖前缘偏移 0.5。
+翼根前缘固定为 (0,0,0)，前缘和后缘位置均沿展向线性变化。
 z=0 是翼根，z=5 是翼尖；当前计算域另一侧位于 z=9。
 
 物理厚度来自 ../Mesh2D/params.h 的 Thickness；BLFlatPlate 使用
@@ -23,9 +24,10 @@ make.sh：矩形入口，输出 test.xml、testcomp.xml。
 makeDeformed.sh：梯形入口，输出 deformed.xml、deformedcomp.xml。
 mesh.cpp：共用的重映射、拼接、输出主程序；默认矩形，--deformed
 启用梯形，--rectangular 显式选择矩形。
-params3D.h：共享的展长、层数、翼尖间距和计算域。
-paramsDeformed.h：源截面尺寸、攻角、梯形弦长和流体过渡范围。
-TrapezoidWing.h：保持厚度、圆角及后缘的逐截面变换。
+params3D.h：共享的展长、层数、翼尖间距、翼尖外侧增长倍率和计算域。
+paramsDeformed.h：源截面尺寸、攻角、rootChord、tipChord、tipLEOffset
+和流体网格的过渡范围。
+TrapezoidWing.h：固定翼根前缘、保持厚度和圆角的逐截面变换。
 CAD3D/Nektarpp.cpp：XML 读取、展向重映射、顶点和曲边变形。
 CAD3D/MeshRegion.cpp：点/边/面拼接、边界与体区域整理、拓扑检查。
 CAD3D/LineEdge.cpp、Util.cpp：展向非均匀分布和辅助函数。
@@ -58,9 +60,20 @@ InputMesh/extrude.sh 复制二维源文件，用 NekMesh 拉伸得到：
 
 mesh.cpp 将归一化展向坐标映射到非均匀 z 分布。
 翼身壁面末层位于 spanlength，其余末层点延伸到
-spanlength+hFirstLayer。第二块从外扩平面延伸到 domainz；第三块从
+spanlength+tipoffset。第二块从外扩平面延伸到 domainz；第三块从
 翼尖延伸到 domainz，底层保持实体轮廓，其余层边界通过 wallmapping
 外扩。这样形成翼尖过渡层和可匹配的三块接口。
+
+翼尖外侧的 z 向增长倍率由 params3D.h 的 tiphzgrowth 指定，默认 2.0，
+必须为有限值且 >=1。翼尖后的第一层厚度为 tipoffset；后续边界层
+间距依次为 tipoffset*tiphzgrowth、tipoffset*tiphzgrowth^2 等。
+tipoffset 默认等于 hFirstLayer；单独修改 tipoffset 不改变翼身段的
+末层间距 hFirstLayer。此参数对矩形和梯形两个入口都生效。
+现有 LineEdge 最多对外侧前 7 层采用指数增长，随后将剩余长度均分；
+如果下一次增长会超过剩余长度/剩余层数，则提前转为等距尾段。
+tiphzgrowth 控制指数增长部分，不保证尾段交界处仍保持该倍率。
+调整倍率不会改变 tipn、spanlength 或 domainz；修改参数后运行相应
+make 脚本重新编译、映射即可，wingn/tipn 未变时无需重新拉伸二维输入。
 
 拼接按点、边、面、单元的顺序进行。重复接口面从边界集合中删除，
 随后整理边界 composite 和体区域。先完成拼接，再统一变形，使共享
@@ -78,25 +91,44 @@ Mesh2D 的坐标约定：
   v = x*sin(AoA) + y*cos(AoA)
 
 源前缘 u=0，源后缘 u=sourceChord。变换只改变 u，保持 v、z。
-在翼身范围：
-  c(z) = rootChord + (tipChord-rootChord)*z/spanlength
-  D(z) = sourceChord-c(z)
-  u_new = u + D(z)*w(u)*g(v)
-超过翼尖时沿用翼尖弦长和变换，不再增加前缘位移。
+形状由 paramsDeformed.h 的三个参数指定，长度单位与源网格相同：
+  rootChord：翼根弦长。
+  tipChord：翼尖弦长。
+  tipLEOffset：翼尖前缘相对翼根前缘沿剖面弦向 +u 的偏移量。
+正值表示朝后缘方向收缩，负值表示前掠；它不是全局 x 方向的距离。
+在翼身范围，t=z/spanlength：
+  c(z) = rootChord + (tipChord-rootChord)*t
+  LE(z) = tipLEOffset*t
+  TE(z) = LE(z)+c(z)
+翼根 LE=0、TE=rootChord，翼尖 LE=tipLEOffset、TE=tipLEOffset+tipChord。
+因此翼根前缘始终位于全局 (0,0,0)，无需平移整个计算域。
+当 0<tipLEOffset<rootChord-tipChord 时，前后缘都向内收缩；
+tipLEOffset=0 保持前缘沿展向不变；tipLEOffset=rootChord-tipChord
+保持后缘沿展向不变（其位置为 rootChord，不再默认等于 sourceChord）。
+超过翼尖时沿用翼尖位置和弦长，保持三块接口一致。
 
-近翼区域 g(v)=1。前缘半圆采用 w=1，整体平移；后缘半圆采用 w=0，
-保持原位。中间平板段改变长度，法向坐标保持不变，因此厚度不变。
-新前缘 u=sourceChord-c(z)，后缘始终为 sourceChord。
-当前翼根前缘为 -0.5，翼尖前缘为 0.5。
+当前参数 rootChord=1.5、tipChord=0.5、tipLEOffset=0.5：
+翼根局部范围 [0,1.5]，翼尖局部范围 [0.5,1.0]，前后缘各收缩 0.5。
+局部尖点 (u,0,z) 的全局坐标为 (u*cos(AoA),-u*sin(AoA),z)。
+例如翼尖前缘为 (0.5*cos(15deg),-0.5*sin(15deg),5)。
 
-完整圆角保护区由实际源半径确定：
-  u<=leadingEdgeRadius：完整平移前缘半圆。
-  u>=sourceChord-trailingEdgeRadius：固定后缘半圆。
-  两者之间以 1-S(t) 连接，S(t)=3*t*t-2*t*t*t。
-上游位移在 taperFarUpstream 到 taperNearUpstream 之间平滑增加到完整
-位移；法向因子在 taperNearNormal 到 taperFarNormal 之间平滑衰减到零。
-固定远场与内部网格需要平滑过渡，避免旧 swept() 仅冻结边界点、整体
-移动其余点造成的突然位移变化。
+两个半圆分别整体平移，禁止整体缩放弦向坐标，否则半圆会变成椭圆：
+  dLE(z) = LE(z)
+  dTE(z) = TE(z)-sourceChord
+  u<=leadingEdgeRadius：完整平移前缘半圆，位移 dLE。
+  u>=sourceChord-trailingEdgeRadius：完整平移后缘半圆，位移 dTE。
+两个半圆之间，令 q=(u-leadingEdgeRadius)/
+(sourceChord-leadingEdgeRadius-trailingEdgeRadius)，S(q)=3*q*q-2*q*q*q：
+  du = dLE*(1-S(q))+dTE*S(q)
+这只改变中间平板段的长度，法向坐标不变，厚度和两个圆角半径均保留。
+
+上游位移在 taperFarUpstream 到 taperNearUpstream 之间从零增加到 dLE；
+下游位移在 taperNearDownstream 到 taperFarDownstream 之间从 dTE 衰减到零。
+默认上游范围 [-5,-1]、下游范围 [2,6]，均按源局部弦向坐标指定。
+法向因子在 taperNearNormal 到 taperFarNormal 之间从一衰减到零。
+这些过渡保持远场不动，并避免只冻结边界点造成位移突变。
+JacobianLowerBound 同时检查两圆角之间、上游和下游过渡的压缩；
+位移过大时应调整形状或加宽对应过渡区，再检查实际高阶单元。
 
 DeformPts 同时修改顶点和 CURVED 中全部曲边插值点。只修改 VERTEX
 会导致圆弧与端点不一致。当前追加的两块输入没有曲边；以后若追加
@@ -105,11 +137,12 @@ DeformPts 同时修改顶点和 CURVED 中全部曲边插值点。只修改 VERT
 
 5. 等弦长恢复矩形的条件
 -----------------------
-rootChord=tipChord 时，得到等弦长矩形机翼。
-只有 rootChord=tipChord=sourceChord 时，D(z)=0，变换完全为恒等映射。
-同一批输入、相同层数和公共参数下，输出应与矩形结果一致。
-两者都设为 1.5 得到弦长 1.5 的矩形翼，坐标与弦长 1 的基准不同。
-当前矩形和梯形共有厚度 1/30、半径 1/60；验证仍应检查实际输入尺寸。
+rootChord=tipChord 且 tipLEOffset=0 时，得到无后掠的等弦长矩形机翼。
+若弦长相同但 tipLEOffset 非零，则是等弦长的前掠/后掠机翼。
+只有 rootChord=tipChord=sourceChord 且 tipLEOffset=0 时，变换完全为
+恒等映射。同一批输入、相同层数和公共参数下，输出应与矩形结果一致。
+rootChord=tipChord=1.5、tipLEOffset=0 会得到弦长 1.5、前缘仍在 u=0
+的矩形翼。矩形和梯形都保持实际源网格的厚度和圆角。
 
 6. 本次遇到的问题与更新输入的方法
 ---------------------------------
@@ -136,12 +169,14 @@ wingn/tipn 声明格式需兼容 extrude.sh 中按字段读取整数的 awk。
 映射测试：
   ctest --test-dir build --output-on-failure
 
-几何与拓扑比较，默认根部 1.5、翼尖 0.5、半径 1/60：
+几何与拓扑比较，默认根部 1.5、翼尖 0.5、前缘偏移 0.5、半径 1/60：
   python3 checks/verify_trapezoid_mesh.py test.xml deformed.xml
 检查矩形本身尺寸和圆角：
-  python3 checks/verify_trapezoid_mesh.py test.xml test.xml --root-chord 1 --tip-chord 1
+  python3 checks/verify_trapezoid_mesh.py test.xml test.xml --root-chord 1 --tip-chord 1 --tip-le-offset 0
+其他形状可显式传入 --root-chord、--tip-chord、--tip-le-offset；
 其他半径可显式传入 --radius。
-脚本核对所有翼身截面的弦长、厚度、圆角和曲边端点，并检查法向/展向
+脚本核对翼根前缘原点、所有翼身截面的前后缘位置、弦长、厚度、
+圆角和曲边端点，并检查法向/展向
 坐标、固定远场、拓扑、composite 编号及边界定义。
 
 实际网格的 Jacobian：
