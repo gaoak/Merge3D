@@ -10,15 +10,10 @@ command -v NekMesh >/dev/null 2>&1 || {
   exit 1
 }
 
-for input in 3DoutUcomp.xml 3DoutUcomp2.xml 3DinUcomp.xml; do
-  if [[ ! -f InputMesh/$input ]]; then
-    (cd InputMesh && bash extrude.sh)
-    break
-  fi
-done
+# Re-extrude the current 2D input on every run to avoid using a stale mesh.
+bash InputMesh/extrude.sh
 cmake -S . -B build
-cmake --build build
-# Rectangle is the default, and this script explicitly selects it as well.
-./build/mesh "$@" --rectangular --output test.xml
-NekMesh test.xml testcomp.xml -f
-echo "Rectangular mesh: test.xml, testcomp.xml"
+cmake --build build --target mesh
+./build/mesh "$@" --yes --lshape --output lshape_3d.xml
+NekMesh -m jac:list lshape_3d.xml lshape_3dcomp.xml -f
+echo "L-shape mesh: lshape_3d.xml, lshape_3dcomp.xml"
