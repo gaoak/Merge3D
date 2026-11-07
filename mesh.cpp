@@ -9,7 +9,10 @@ merge 3D nektar mesh at Re 400
 #include "params3D.h"
 #include <algorithm>
 #include <cmath>
+#include <iomanip>
 #include <iostream>
+#include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 using namespace std;
@@ -91,13 +94,81 @@ static const TrapezoidWing &wingTransform() {
 
 static void taperWing(double *p) { wingTransform().Apply(p); }
 
+static int generateLshape(const string &output, bool confirm) {
+  const int layers = 32, maxBoundaryLayers = 5;
+  const double length = 0.4, firstHeight = 0.003, growth = 1.6;
+  // Stop before a geometric layer would exceed the remaining uniform spacing.
+  int boundaryLayers = 0;
+  double boundaryWidth = 0., height = firstHeight;
+  while (boundaryLayers < maxBoundaryLayers) {
+    const int coreLayers = layers - 2 * (boundaryLayers + 1);
+    const double coreWidth = length - 2 * (boundaryWidth + height);
+    if (coreLayers <= 0 || coreWidth <= 0. || height > coreWidth / coreLayers)
+      break;
+    boundaryWidth += height;
+    height *= growth;
+    ++boundaryLayers;
+  }
+  vector<double> target(layers + 1, 0.);
+  height = firstHeight;
+  for (int i = 1; i <= boundaryLayers; ++i) {
+    target[i] = target[i - 1] + height;
+    target[layers - i] = length - target[i];
+    height *= growth;
+  }
+  const double coreHeight =
+      (length - 2 * boundaryWidth) / (layers - 2 * boundaryLayers);
+  for (int i = boundaryLayers + 1; i < layers - boundaryLayers; ++i)
+    target[i] = boundaryWidth + (i - boundaryLayers) * coreHeight;
+  target[layers] = length;
+  cout << "L-shape: " << layers << " layers, z=[0, " << length << "], "
+       << boundaryLayers << " boundary layers at each end, core spacing="
+       << setprecision(12) << coreHeight << "\nz coordinates:\n";
+  for (double z : target)
+    cout << z << ' ';
+  cout << endl;
+  if (confirm) {
+    cout << "input c for continue " << endl;
+    char c = 0;
+    cin >> c;
+    if (c != 'c')
+      throw runtime_error("Mesh generation cancelled");
+  }
+
+  NektarppXml mesh("InputMesh/lshape_3d_uniform.xml", "lshape_");
+  auto geometry = mesh.m_doc.FirstChildElement("NEKTAR");
+  geometry = geometry ? geometry->FirstChildElement("GEOMETRY") : nullptr;
+  auto vertices = geometry ? geometry->FirstChildElement("VERTEX") : nullptr;
+  if (!vertices || geometry->IntAttribute("DIM") != 3)
+    throw runtime_error("Expected a 3D extruded mesh; run InputMesh/extrude.sh");
+  set<int> levels;
+  for (auto v = vertices->FirstChildElement(); v; v = v->NextSiblingElement()) {
+    double x, y, z;
+    istringstream coords(v->GetText() ? v->GetText() : "");
+    if (!(coords >> x >> y >> z) || !isfinite(z) || z < 0. || z > 1. ||
+        fabs(z * layers - round(z * layers)) > 1e-8)
+      throw runtime_error("Expected 32 uniform unit-length layers");
+    levels.insert(static_cast<int>(round(z * layers)));
+  }
+  if (levels.size() != layers + 1)
+    throw runtime_error("Expected 33 z planes; rerun InputMesh/extrude.sh");
+  // LoadXml remaps vertices and curved points directly in the XML document.
+  // No topology/composite/domain reorganization is needed for this extrusion.
+  mesh.LoadXml(layers, target);
+  mesh.CheckMesh();
+  mesh.OutXml(output);
+  return 0;
+}
+
 static int generateMesh(int argc, char *argv[]) {
-  bool confirm = true, deformed = false;
+  bool confirm = true, deformed = false, lshape = false;
   string output;
   for (int i = 1; i < argc; ++i) {
     const string arg = argv[i];
     if (arg == "--yes")
       confirm = false;
+    else if (arg == "--lshape")
+      lshape = true;
     else if (arg == "--deformed")
       deformed = true;
     else if (arg == "--rectangular")
@@ -105,16 +176,19 @@ static int generateMesh(int argc, char *argv[]) {
     else if (arg == "--output" && i + 1 < argc)
       output = argv[++i];
     else if (arg == "--help") {
-      cout << "Usage: mesh [--yes] [--deformed | --rectangular] "
+      cout << "Usage: mesh [--yes] [--lshape | --deformed | --rectangular] "
               "[--output mesh.xml]\n"
               "Default: rectangular mesh (test.xml). "
-              "--deformed: trapezoid mesh (deformed.xml).\n";
+              "--deformed: trapezoid mesh (deformed.xml).\n"
+              "--lshape: 32-layer L-shape mesh (lshape_3d.xml).\n";
       return 0;
     } else
       throw invalid_argument("Unknown or incomplete option: " + arg);
   }
   if (output.empty())
-    output = deformed ? "deformed.xml" : "test.xml";
+    output = lshape ? "lshape_3d.xml" : (deformed ? "deformed.xml" : "test.xml");
+  if (lshape)
+    return generateLshape(output, confirm);
   if (deformed)
     cout << "Trapezoid chord: root=" << rootChord << ", tip=" << tipChord
          << ", tip leading-edge offset=" << tipLEOffset
